@@ -1,7 +1,7 @@
 
 =How do I place an optionless and bodyless tag or macro before a capitalized character?
 
-\BU<Question:>
+\QST
 
 Several tags and macros require neither options nor a body. This means, they do consist of only their name
 which is capitalized. If I want to place such a tag/macro before a capitalized character, PerlPoint treats the
@@ -13,7 +13,7 @@ How to separate tag name and subsequent characters?
 
 
 
-\BU<Answer:>
+\ANS
 
 Use an empty variable:
 
@@ -23,7 +23,7 @@ Use an empty variable:
 
 
 
-\BU<Discussion:>
+\DSC
 
 To make writing easy, PerlPoint makes numerous assumptions about several things. One is that all uppercased characters
 following a backslash are a tag or macro name if currently such a tag or macro is defined. Usually this causes no

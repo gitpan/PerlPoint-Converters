@@ -1,5 +1,8 @@
 
-// vim: set filetype=pp2html:
+// include macro definitions shared by all basic tag docs
+\INCLUDE{type=pp file="basic-tag-macros.pp" smart=1}
+
+
 
 =READY
 
@@ -11,8 +14,6 @@ The \B<\\READY> tag instructs PerlPoint to ignore remaining parts of a document.
 
 \\READY
 
-
-\B<Options>
 
 \B<Options>
 
@@ -56,5 +57,5 @@ to use it in a line of its own (as demonstrated by the example).
 
 \B<See also>
 
-More basic set tags: \B<\\B>, \B<\\C>, \B<\\I> and \B<\\IMAGE>.
+More basic set tags: \OTHER_BASIC_TAGS{current=TABLE}.
 

@@ -1,21 +1,14 @@
 This is the TODO list for PerlPoint-Converters
 ==============================================
-$Date: 2001/06/14 12:00:56 $
-$Revision: 1.2 $
+$Date: 2001/12/18 22:51:07 $
+$Revision: 1.3 $
 
 (sorted by priority: 1 = very high, ..., 6 = very low)
 
-[] Documentation should be better:
-   more structure:
-   -  FAQ
-   -  Getting Started
-   -  Reference Manual
-
-[] FAQ zu Umlauten (DOS --> UNIX)
+[] FAQ to Umlaute (DOS --> UNIX)
 
 [] Monolithisches HTML (all in one file)
 
-[] Style Option
 
 [3] allow tags und html escapes in headers
 
@@ -26,17 +19,11 @@ $Revision: 1.2 $
 
 [3] internal reference error messages 
 
-[2] java_script_navigation:
-    if disabled: do not create java script headers  (ok, done)
-    else: include java script code from extra file  (still open)
-
 [2] Doc: Precedence of \L  \B  \X  ...
 
 [3] Usage: tmp filename so that it will also work on Win32 platform
 
-[3] Doc: update POD Docu, update ppdoc.pp (new features)
-
-[3] Build a reasonable test suite (./t)
+[3] Enhance test suite (./t)
 
 [3] Start thinking about XML, and PPresenter Interface
 

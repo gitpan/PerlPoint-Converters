@@ -2,13 +2,13 @@
 =Can I process DOS documents on UNIX?
 
 
-\BU<Question:>
+\QST
 
 I wrote a document on DOS and processed it under UNIX. It worked well till I activated
 the PerlPoint parser cache. Then chapters disappeared when the document was reparsed.
 
 
-\BU<Answer:>
+\ANS
 
 Transform the line endings by replacing \C<"\\r\\n"> by \C<"\\n">. This could be done,
 for example, by a Perl one liner like
@@ -23,7 +23,7 @@ option \C<-ascii>:
 There might be more utilities performing this job.
 
 
-\BU<Discussion:>
+\DSC
 
 While PerlPoint documents are \I<highly> portable because of their text file nature, things
 become difficult when the cache is activated. The cache works on base of paragraphs and

@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2latex,v 1.11 2001/06/15 15:56:02 lorenz Exp lorenz $
-# $Revision: 1.11 $
-# $Date: 2001/06/15 15:56:02 $
+# $Id: pp2latex,v 1.14 2001/12/19 21:04:43 lorenz Exp $
+# $Revision: 1.14 $
+# $Date: 2001/12/19 21:04:43 $
 #
 # $Author: lorenz $
 #
@@ -26,16 +26,19 @@ use subs "flush", "push_page", "pp_warn";
 use File::Basename;
 use Carp;
 use Safe;
+use PerlPoint::Tags;
+use PerlPoint::Tags::Basic;
 use PerlPoint::Tags::HTML;
 use PerlPoint::Tags::LaTeX;
 use PerlPoint::Backend;
 use PerlPoint::Parser 0.34;
 use PerlPoint::Constants;
+use PerlPoint::Converters qw(replace_keywords copy_file update_file mk_abs_path);
 
-(my $me = $0) =~ s#.*/##;
+my $me = basename($0);
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.11.01 $/ =~ /(\d+)\.(\d+)/);
-my $PACK_VERSION = "0.11";
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.14 $/ =~ /(\d+)\.(\d+)/);
+my $PACK_VERSION = $PerlPoint::Converters::VERSION;
 $main::VERSION = $VERSION;
 
 my $nix = "";                      # for using RCS keys in Usage, ...
@@ -82,6 +85,7 @@ GetOptions( \%OPT,
   "activeContents",
   "cache",
   "cacheCleanup",
+  "double_lines",
   "filter=s",
   "no_index",
   "nocopyright",
@@ -105,13 +109,13 @@ $OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDE
 
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
-print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT{quiet};
-print STDERR "$Date: 2001/06/15 15:56:02 $nix\n" unless $OPT{quiet};
+print STDERR "This is $me, build $VERSION from PerlPoint::Converters $PACK_VERSION\n" unless $OPT{quiet};
+print STDERR "$Date: 2001/12/19 21:04:43 $nix\n" unless $OPT{quiet};
 print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT{nocopyright};
 exit if $OPT{version};
 
 
-$verbose = 0 if ($OPT{quiet});
+$verbose = 0 if ($OPT{quiet} or $OPT{noinfo});
 
 my ($li_start, $li_end);
 $li_start = "\\item ";
@@ -196,7 +200,14 @@ $parser->run(
 
 
 # build a backend
-my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_NOTHING);
+my $backend=new PerlPoint::Backend(
+             name    => $me, 
+             trace   => TRACE_NOTHING,
+             display => DISPLAY_ALL
+                      + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)
+                      + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
+             vispro  => 1,
+);
 #my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_BACKEND);
 
 # register backend handlers
@@ -225,9 +236,6 @@ my $box_fg_color= "white";
 
 # and run it
 $backend->run(\@streamData,
-             display => DISPLAY_ALL
-                      + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)                                
-                      + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
 );
 
 begin_doc();
@@ -272,6 +280,7 @@ exit 0;
 # helper function
 #----------------------------------------------------------
 sub begin_doc{
+  print "% Created by $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n";
   if (defined $OPT{prolog}) {
     # get prolog definitions from file
     my $prolog_file = $OPT{prolog};
@@ -285,6 +294,7 @@ sub begin_doc{
     }
     close(PR);
   } else {
+
   print <<'EOT';
 \documentclass [11pt] {article}   % 
 \usepackage{german}               % ISO-Latin-Zeichensatz (äöüß)
@@ -466,10 +476,16 @@ sub handleBlock { # code block with TAG recognition
 
 #----------------------------------------------------------
 sub handleLShift {
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "\n\% Shift <\n";
+  }
 } # handleLShift
 
 #----------------------------------------------------------
 sub handleRShift {
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "\n\% Shift >\n";
+  }
 } # handleRShift
 
 #----------------------------------------------------------
@@ -511,7 +527,7 @@ sub e_escapes{
   } elsif ($flag eq "szlig"){
     return "ß";
   } elsif ($flag eq "nbsp"){
-    return "\\nolinebreak ";
+    return " ";
   } else {
     return "__ this was HTML escape: $flag __";  #  --> syntax error in latex
   }
@@ -676,9 +692,9 @@ sub handleTag {
         my $xsize = $_[3]->{'epsfxsize'};
         push_page $page_ref, "\n\n \\epsfxsize=$xsize\n";
       }
-      my $ps_file = "$OPT{slide_dir}/$file";
+      my $ps_file = $file;
       $ps_file =~ s/\.[^.]*$/.eps/;
-      print STDERR " ... image: $ps_file\n" if $verbose;
+      print STDERR " ... image: $ps_file\n";
       if (-e $ps_file) {
         push_page $page_ref, "\n\n\\epsffile{$ps_file}\n\n";
       } else {
@@ -726,6 +742,8 @@ sub handleTag {
     }
     return;
   }
+# TODO: \URL
+
   if ($_[2] eq "L") {                                                # general URL
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'url'}) {
@@ -833,6 +851,7 @@ sub handleTag {
          $cols = $_[3]->{'columns'};
       }
       push_page $page_ref, "\n\n\\vspace{1ex}\n\\begin{tabular}{$cols}\n";
+      push_page $page_ref, "\\hline\n" unless $OPT{double_lines};
     } else {
       push_page $page_ref, "\n\n\\end{tabular}\n\n";
     }
@@ -852,7 +871,7 @@ sub handleTag {
   if ($_[2] eq "TABLE_ROW") {                                       # TABLE
     flush;
     if ($_[1]==DIRECTIVE_START) {
-      push_page $page_ref, "\\hline\n";
+      push_page $page_ref, "\\hline\n" if $OPT{double_lines};
     } else {
       pop (@$page_ref); # to remove extra '&'
       push_page $page_ref, "\\\\\\hline\n";
@@ -887,6 +906,29 @@ sub handleTag {
     return;
   }
 
+  if ($_[2] eq 'LOCALTOC') { # ste, ldo
+     # act mode dependend - we only need to handle this once, there is no tag body
+     if ($_[1]==DIRECTIVE_START)
+       {
+        # get local toc
+        my $toc=$backend->toc(
+                              $backend->currentChapterNr,
+                              exists $_[3]->{depth} ? $_[3]->{depth} : 0,
+                             );
+
+        # anything found?
+        if (@$toc)
+          {
+           # make it into a list
+           push_page $page_ref,  "\n\n\\begin{itemize}\n";
+           push_page $page_ref,  '  \\item ', ' ', $_->[1], "\n" for @$toc;
+           push_page $page_ref,  "\n\\end{itemize}\n\n";
+          }
+       }
+
+     # ok, well done
+     return;
+  }
 
   warn "**** $me: unkown or not yet implemented tag: $_[2]\n";
 } # handleTag
@@ -894,12 +936,12 @@ sub handleTag {
 #----------------------------------------------------------
 sub handleDocument {
   if ($_[1]==DIRECTIVE_START) {
-    warn "Document (base $_[2]).\n";
+    warn "\n[Info] Document start ($_[2]).\n" if $verbose;
 
   }
   else {
 
-    warn "Document (base $_[2]).\n";
+    warn "\n[Info] Document end ($_[2]).\n" if $verbose;
   }
 } # handleDocument
 
@@ -984,7 +1026,9 @@ B<pp2latex> - PerlPoint to LaTeX converter
 
 =head1 VERSION
 
-This manual describes version B<0.11, build 1.11>.
+This man page describes $Revision: 1.14 $
+from PerlPoint::Converters Package 1.01
+
 
 =head1 SYNOPSIS
 
@@ -1025,6 +1069,11 @@ C<\documentclass> and C<\begin{document}> must be defined there.
 PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
 reasons of security this feature is deactivated by default. Set this option to active
 it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
+
+=item --double_lines
+
+This option has the effect that all horizontal Lines in Tables are
+doubled.
 
 =item --cache
 
@@ -1158,6 +1207,24 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 # --------------------------------------------------------------------------
 
 $Log: pp2latex,v $
+Revision 1.14  2001/12/19 21:04:43  lorenz
+Final commit for Version 1.001
+
+Revision 1.13  2001/12/18 22:51:07  lorenz
+Checkin for version 1.01
+
+Revision 1.12  2001/12/06 21:38:06  lorenz
+more tests
+
+Revision 1.11  2001/11/30 00:46:22  lorenz
+new cvs version
+
+Revision 1.10  2001/10/02 08:47:56  lorenz
+LOCALTOC
+
+Revision 1.12  2001/08/16 04:06:46  lorenz
+checkin for/after 0.11.01
+
 Revision 1.11  2001/06/15 15:56:02  lorenz
 ci for Release 0.10 (final)
 

@@ -1,5 +1,5 @@
 <!-- ---- Bottom Navigation Bar ---------------------------------- BEGIN 
-  $Id: big_blue-bot.tpl,v 1.1 2001/06/14 12:00:56 lorenz Exp $
+  $Id: big_blue-bot.tpl,v 1.2 2001/12/06 21:38:12 lorenz Exp $
 -------------------------------------------------------------------- -->
 <HR SIZE=8>
 
@@ -8,10 +8,10 @@
 <TR>
 
   <TD  WIDTH=10%>
-     Next:<br>
-     Previous:<br>
-     Contents:<br> 
-     Index:<br> 
+     LABEL_NEXT:<br>
+     LABEL_PREV:<br>
+     LABEL_CONTENTS:<br> 
+     LABEL_INDEX:<br> 
   </TD>
   <TD >
      <a href="URL_NEXT">TXT_NEXT</a><br>
@@ -20,11 +20,7 @@
      <a href="URL_INDEX">TXT_INDEX</a><br> 
   </TD>
  <TD VALIGN=top ALIGN=right ><SMALL>
-    Copyright &copy; 
-    <a href="mailto:perl@Jochen-Stenzel.de">Jochen Stenzel</a>,
-    &nbsp;
-    <a href="mailto:Lorenz.Domke@gmx.de">Lorenz Domke</a><br>
-    All rights reserved.
+    BOT_RIGHT_TXT
     </SMALL>
  </TD>
 

@@ -95,6 +95,9 @@ Lorenz Domke <logenz.domke@gmx.de>
 =cut
 
 $Log: LaTeX.pm,v $
+Revision 1.1  2001/11/30 00:46:30  lorenz
+new cvs version
+
 Revision 1.1  2001/06/14 12:00:56  lorenz
 Initial revision
 

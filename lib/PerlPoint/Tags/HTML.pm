@@ -2,7 +2,7 @@
 
 package PerlPoint::Tags::HTML;
 
-$VERSION = sprintf("%d.%02d", q/$Revision: 1.1 $/ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q/$Revision: 1.2 $/ =~ /(\d+)\.(\d+)/);
 
 use base qw(PerlPoint::Tags);
 use strict;
@@ -50,6 +50,11 @@ use vars qw(%tags %sets);
                    'body'    => TAGS_MANDATORY,
                },
 
+            URL => {
+                   'options' => TAGS_MANDATORY,
+                   'body'    => TAGS_DISABLED,
+               },
+
             PAGEREF => {
                    'options' => TAGS_MANDATORY,
                    'body'    => TAGS_DISABLED,
@@ -94,6 +99,10 @@ use vars qw(%tags %sets);
                    'options' => TAGS_DISABLED,
                    'body'    => TAGS_DISABLED,
                },
+       #    LOCALTOC => {
+       #           options => TAGS_OPTIONAL,
+       #           body    => TAGS_DISABLED,
+       #    },
 
   
 );
@@ -147,6 +156,11 @@ Anchor tag for setting marks which can be used in cross references etc..
 =item B<\L>{url="target"}<text of hyperlink>
 
 Link tag for defining hyperlinks to other HTML pages.
+
+=item B<\URL>{url="target"}
+
+Link tag for defining hyperlinks to other HTML pages.
+The target itself is used as text of the hyperlink.
 
 =item B<\BOXCOLORS>{fg="fg_color" bg="bg_color"}
 
@@ -231,6 +245,12 @@ Lorenz Domke <logenz.domke@gmx.de>
 =cut
 
 $Log: HTML.pm,v $
+Revision 1.2  2001/12/18 22:51:12  lorenz
+Checkin for version 1.01
+
+Revision 1.1  2001/11/30 00:46:30  lorenz
+new cvs version
+
 Revision 1.1  2001/06/14 12:00:56  lorenz
 Initial revision
 

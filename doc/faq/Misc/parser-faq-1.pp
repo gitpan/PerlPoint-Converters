@@ -1,7 +1,7 @@
 
 =Variable assignments do not work
 
-\BU<Question:>
+\QST
 
 I wrote a paragraph like
 
@@ -14,14 +14,14 @@ to assign \C<120> to \C<$var>, but when I used it like in
 \C<$var> was not replaced by the value.
 
 
-\BU<Answer:>
+\ANS
 
 Just remove the spaces around the "=":
 
   $var=120
 
 
-\BU<Discussion:>
+\DSC
 
 Because \B<PerlPoint::Parser> has to recognize PerlPoint controls amidst natural language it cannot handle whitespaces as
 programming language parsers do - whitespaces are real tokens. Not accepting them in an assignment simplifies the parsers

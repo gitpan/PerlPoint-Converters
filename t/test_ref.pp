@@ -18,8 +18,8 @@ Please refer to page \PAGEREF{name="Second page"}.
 
 =Links to the web
 
-Som URLS:
+Some URLS:
 
-* L\{"http://www.pixel.de"}<Pixel GmbH>
+* \L{url="http://www.pixel.de"}<Pixel GmbH>
 
-* L\{"http://www.mixed-mode.de" target="_blank"}<Mixed-Mode Aisc Design GmbH>
+* \L{url="http://www.mixed-mode.de" target="_blank"}<Mixed-Mode Asic Design GmbH>

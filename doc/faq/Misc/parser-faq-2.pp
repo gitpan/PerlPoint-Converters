@@ -1,7 +1,7 @@
 
 =Line indentation in tagged examples
 
-\BU<Question:>
+\QST
 
 I used tags in an example and now it's difficult to find the correct line indentation.
 The result looks like
@@ -20,13 +20,13 @@ when it should be
 
 
 
-\BU<Answer:>
+\ANS
 
 Write down the complete example first as pure text and relatively indent the lines as necessary.
 Add the wished tags in a second step.
 
 
-\BU<Discussion:>
+\DSC
 
 This is a common problem with markup languages and not special to PerlPoint. Tags consume
 space. While this is no problem in a text dynamically wrapped, it is sometimes an issue in

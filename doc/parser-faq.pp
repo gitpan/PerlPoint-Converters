@@ -2,6 +2,13 @@
 // declare helpful macros
 +BU:\B<\U<__body__>>
 
+// Later we can re-define these macros to use funny images ...
++QST:\BU<Question:>
+
++ANS:\BU<Answer:>
+
++DSC:\BU<Discussion:>
+
 // general headline
 =FAQ
 
@@ -14,7 +21,7 @@
 
  # get all subdirectories
  opendir(D, 'faq') or die qq([Fatal] Cannot open directory "faq"\n);
- my @categories=grep((-d "faq/$_" and !/^\./), readdir(D));
+ my @categories=grep((-d "faq/$_" and !/^\./ and !/^CVS$/), readdir(D));
  closedir(D);
 
  # process all categories

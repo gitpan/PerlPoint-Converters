@@ -1,8 +1,8 @@
 <html>
   <!--
-  $Id: pp_book-frm.tpl,v 1.1 2001/06/14 12:00:56 lorenz Exp $
-  $Revision: 1.1 $
-  $Date: 2001/06/14 12:00:56 $
+  $Id: pp_book-frm.tpl,v 1.2 2001/12/06 21:38:12 lorenz Exp $
+  $Revision: 1.2 $
+  $Date: 2001/12/06 21:38:12 $
   -->
 <head>
   <title>TITLE</title>
@@ -11,13 +11,13 @@
 <frameset border=0 frameborder=0 framespacing=0 rows="60, *, 60">
     <frame src="./pp_book-top.htm" name="Top">
     <frameset border=0 frameborder=0 framespacing=0 cols="205, *">
-      <frame src="slide0000.htm" name="Index">
-      <frame src="slide0001.htm" name="Data">
+      <frame src="SLIDE_PREFIX0000.SLIDE_SUFFIX" name="Index">
+      <frame src="SLIDE_PREFIX0001.SLIDE_SUFFIX" name="Data">
     </frameset>
     <frame src="./pp_book-bot.htm" name="Foot">
 </frameset>
 
 <body>
-  Please call the <a href="slide0000.htm">titel page</a>
+  Please call the <a href="SLIDE_PREFIX0000.SLIDE_SUFFIX">titel page</a>
 </body>
 </html> 
