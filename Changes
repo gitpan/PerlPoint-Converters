@@ -1,0 +1,57 @@
+Revision history for PerlPoint-Converters.
+
+Version 0.007   12/10/2000
+-  First version vor CPAN
+-  Name of the package changed from `pp2xx' to `PerlPoint-Converters'.
+   The reason was that the Parser package had to change its name from `PP-Package'
+   to `PerlPoint-Package' when being moved to the CPAN. To make it clear that the
+   two packages are closely related, I decided to use the new name.
+-  require 5.6.0 (because PerlPoint-Package-0.27 needs it, too)
+-  Option "--safe_opcodes"
+
+
+Version 0.006   10/27/2000
+-  \EMBED  \END_EMBED supported in pp2html
+-  Templates changed (usage of karawane-50.gif)
+-  Activated embedded perl code (use Safe)
+-  pp2latex: rudimentary support of eps files:
+   when you use \IMAGE{src="filename.gif"} a file named "filename.eps" will be
+   included in the tex file (if it exists ... :-)
+-  ppdoc.pp updated (\INCLUDE parser-paragraphs, parser-tags and parser-active-contents
+   from Jochen Stenzel)
+-  create the slide directory specified by --slide_dir as necessary
+-  pp2latex: included first version of TABLE support (from Alexander Sigel)
+-  --block_indent option for pp2html
+-  --no_index option for pp2html
+
+Version 0.005   10/19/2000
+-  name changed: pp2htm  --> pp2html
+-  needs PP::Parser 0.21
+-  handler for DPointItem
+-  sorting in index has been corrected
+   multiple index entries are now supported
+-  parameter "file" in \IMAGE tags renamed to "src" (for better consistency with HTML)
+-  parameters "height" and "width" supported for \IMAGE tags
+-  parameter "face" supported for \F tag
+-  \TABLE tags supported
+-  handle shift paragraphs > and <
+-  Bugfix: if there was no index, the last page was not processed !!
+
+Version 0.004   10/04/2000
+-  \IMAGE tag implemented
+-  \F tag implemented
+-  Option --nav_template for navigation bar inside each page of a frame set
+-  automatic insertion of anchor for each page (name of anchor is the page header)
+-  Option --java_script_navigation
+
+Version 0.003   09/10/2000
+-  first version with Makfile.PL support
+
+Version 0.002   08/04/2000
+-  make_submission script enhanced
+-  ppdoc.pp: first english version, not yet complete
+
+Version 0.001   08/03/2000
+-  Initial version with first versions of make_submission, README
+   and ex_* sample test cases
+

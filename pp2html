@@ -1,0 +1,1979 @@
+#!/usr/local/bin/perl -w
+#
+# $Id: pp2html,v 1.9 2000/12/10 22:48:37 lorenz Exp $
+# $Revision: 1.9 $
+# $Date: 2000/12/10 22:48:37 $
+#
+# $Author: lorenz $
+#
+# Revision History: See end of file
+#===================================================================
+
+#use lib "$ENV{'HOME'}/lib/perl5";
+use Pod::Text;
+use Getopt::ArgvFile qw(argvFile);
+use Getopt::Long;
+use Data::Dumper;
+                     
+
+# pragmata
+use strict;
+use subs "flush", "push_page", "pp_warn";
+
+# load modules
+use Carp;
+use File::Basename;
+use Safe;
+use PerlPoint::Backend;
+use PerlPoint::Parser 0.27;
+use PerlPoint::Constants;
+
+(my $me = $0) =~ s#.*/##;
+
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.9 $/ =~ /(\d+)\.(\d+)/);
+
+my $nix = "";                      # for using RCS keys in Usage, ...
+my $Date = "Date ";
+
+#============================================================= Usage
+
+sub Usage {
+  no strict;
+  $^W = 0;
+  my $tmpfile = "/tmp/$me.$$_help";
+  open(ME, "< $0") or die "Can't open $me: $!\n";
+  open(TMP, "> $tmpfile") or die "Can't open $tmpfile: $!\n";
+  while(<ME>){
+    s/PROGRAM/$me/g;
+    s/P_VERSION/$VERSION/g;
+    print TMP $_;
+  }
+  close(TMP);
+  pod2text( $tmpfile );
+  unlink $tmpfile;
+  exit;
+} # Usage
+
+#==================================================== Parameter Loop
+
+my %OPT = (
+  frame_set       => "",
+  frame_start     => "frame_set.html",
+  bgcolor         => "#FFFFFF",
+  boxtext_bold    => "ON",
+  title           => "XXXXX",
+  contents_header => "Contents",
+  index_header    => "Index",
+  index_top       => 0,
+  index_dat       => 1,
+  index_bot       => 2,
+  bullet          => "<LI>",
+  safe_opcodes    => ":default",
+  slide_dir       => ".",
+  slide_prefix    => "slide",
+  slide_suffix    => "htm",
+  box_color    => "blue",
+  boxtext_color    => "white",
+  center_headers  => 0,
+  java_script_navigation  => 1,
+  linear_mode     => 0,
+  no_index        => 0,
+  tree_applet     => 0,
+  tree_app_width  => 250,
+  tree_app_height => 500,
+  tree_base => "./",
+  top_template    => "",
+  bottom_template => "",
+);
+
+argvFile( home => 1, default => 1);
+
+GetOptions(
+
+  "bgcolor=s",                   \$OPT{bgcolor},
+  "block_indent=i",              \$OPT{block_indent},
+  "bottom_idx_template=s",       \$OPT{bottom_idx_template},
+  "bottom_template=s",           \$OPT{bottom_template},
+  "bottom_toc_template=s",       \$OPT{bottom_toc_template},
+  "boxtext_bold=s",              \$OPT{boxtext_bold},
+  "box_color=s",                 \$OPT{box_color},
+  "boxtext_color=s",             \$OPT{boxtext_color},
+  "bullet=s",                    \$OPT{bullet},
+  "center_headers",              \$OPT{center_headers},
+  "contents_header=s",           \$OPT{contents_header},
+  "debug",                       \$OPT{debug},
+  "frame_set=s",                 \$OPT{frame_set},
+  "frame_start=s",               \$OPT{frame_start},
+  "help",                        \$OPT{help},
+  "index_bot=s",                 \$OPT{index_bot},
+  "index_dat=s",                 \$OPT{index_dat},
+  "index_header=s",              \$OPT{index_header},
+  "index_top=s",                 \$OPT{index_top},
+  "java_script_navigation=s",    \$OPT{java_script_navigation},
+  "linear_mode",                 \$OPT{linear_mode},
+  "nav_template=s",              \$OPT{nav_template},
+  "num_headers",                 \$OPT{num_headers},
+  "no_index",                    \$OPT{no_index},
+  "safe_opcodes=s",              \$OPT{safe_opcodes},
+  "slide_dir=s",                 \$OPT{slide_dir},
+  "slide_prefix=s",              \$OPT{slide_prefix},
+  "slide_suffix=s",              \$OPT{slide_suffix},
+  "title=s",                     \$OPT{title},
+  "top_idx_template=s",          \$OPT{top_idx_template},
+  "top_template=s",              \$OPT{top_template},
+  "top_toc_template=s",          \$OPT{top_toc_template},
+  "tree_app_height=s",           \$OPT{tree_app_height},
+  "tree_app_width=s",            \$OPT{tree_app_width},
+  "tree_applet",                 \$OPT{tree_applet},
+  "tree_base=s",                 \$OPT{tree_base},
+  "version",                     \$OPT{version},
+
+);
+
+#======================================================= Script Body
+Usage(1) if ($OPT{help});
+print "This is $me version $VERSION\n";
+print "$Date: 2000/12/10 22:48:37 $nix\n\n";
+if ($OPT{version}) {
+  exit;
+}
+
+# check slide dir and create it if necessary:
+if (! -d $OPT{slide_dir}) {
+  print STDERR "creating slide dir $OPT{slide_dir} ...\n";
+  mkdir $OPT{slide_dir}, oct(755) or die "Cannot creating $OPT{slide_dir}: $!\n";
+}
+
+my ($li_start, $li_end);
+$li_start = "<LI>\n";
+$li_end = "\n</LI>\n";
+my $LIST;
+my ($lo_start, $lo_end) = ($li_start, $li_end);
+if (uc($OPT{bullet}) ne "<LI>"){
+  # check, if bullet gif or jpeg file exists:
+  # cd to the slide dir, then check, and then cd back ...
+  # this is necessary because the pathname may be specified relative to slide_dir 
+  # or absolute (in UNIX or other OS conventions ...)
+  $OPT{bullet} =~ s/"//g; # remove "
+  { my $pwd = `pwd`;
+    chomp $pwd;
+    chdir $OPT{slide_dir} or die "cannot cd back to slide directory $OPT{slide_dir}: $!\n";
+    if (! -e "$OPT{bullet}"){
+      pp_warn "Image file for bullet not found: $OPT{bullet} ...\n";
+    } else {
+      $li_start = "<TABLE><TR><TD valign=\"TOP\"><IMG SRC=\"$OPT{bullet}\"></TD><TD>\n";
+      $li_end = "\n</TD></TR></TABLE>\n";
+    }
+    chdir $pwd or die "cannot cd back to working directory $pwd: $!\n";
+  }
+}
+if ( ! $OPT{frame_set}){
+  $OPT{java_script_navigation} = 0; # in this case we do NOT need java script navigation
+}
+if (! defined($OPT{top_idx_template})){
+  $OPT{top_idx_template} = $OPT{top_template}
+}
+if (! defined($OPT{top_toc_template})){
+  $OPT{top_toc_template} = $OPT{top_template}
+}
+if (! defined($OPT{bottom_idx_template})){
+  $OPT{bottom_idx_template} = $OPT{bottom_template}
+}
+if (! defined($OPT{bottom_toc_template})){
+  $OPT{bottom_toc_template} = $OPT{bottom_template}
+}
+
+my ($block_indent_0, $block_indent_1) = ("","");
+if (defined($OPT{block_indent})){
+  for (my $i=0; $i < $OPT{block_indent}; $i++){
+    $block_indent_0 .= "<UL>";
+    $block_indent_1 .= "</UL>";
+  }
+}
+
+if ($OPT{frame_set} ne "") {
+  print "Creating frame set ...\n";
+  my $fset = $OPT{frame_set};
+  if (! -e $fset or -d $fset) {
+    die "*** error: frame set template $fset does not exist or is a directory!\n";
+  }
+  copy_file($fset, "$OPT{slide_dir}/$OPT{frame_start}");
+}
+
+my $embedded_html = 0;
+
+# declare variables
+# Data Structures
+# 000000000000000
+my (@streamData, %tagHash);
+
+my $page_ref;  # pointer to current page buffer
+
+my @PAGES;     # Array of pointers to PAGE structures
+#  PAGES[0] is table of contents
+#  $PAGES[ $m ] = {
+#                    BODY => [ ... ],
+#                    LEVEL => ...,
+#                    NUMBER => ...,
+#                    HD => ...,
+#                    FILENAME => ...,
+#                    PREV => ...,
+#                    NEXT => ...,
+#                    UP => ...,
+#                    DOWN => ...,
+#                    FIRST => ...,
+#                    LAST => ...,
+#                 }
+my $page_cnt = 0;
+my $idx_page_cnt = 1;
+$PAGES[0] -> {HD} = $OPT{contents_header};
+$PAGES[0] -> {FILENAME} = "$OPT{slide_prefix}0000.$OPT{slide_suffix}";
+$PAGES[0] -> {LEVEL} = 0;
+$PAGES[0] -> {NUMBER} = "0";
+$PAGES[0] -> {UP} = -1;
+$PAGES[0] -> {DOWN} = 1;
+$PAGES[0] -> {PREV} = -1;
+$PAGES[0] -> {NEXT} = 1;
+$PAGES[0] -> {FIRST} = 0;
+$PAGES[0] -> {LAST} = 0;
+
+
+
+my ($f0, $f1, $f2) =
+ ($OPT{index_top}, $OPT{index_dat}, $OPT{index_bot});  # window indices for javascript
+
+
+
+my %ANCHOR;  # $ANCHOR{a_name} = $page_cnt
+
+my %INDEX;   # index entries
+my %IDX_;    # index entries available
+my $idx_cnt = 0;
+my ($center_1, $center_2) = ("","");
+my $table_hl_bgcolor="";
+
+if ($OPT{center_headers}){
+  $center_1 = "<center>";
+  $center_2 = "</center>";
+}
+
+
+# declare list of tag openers
+@tagHash{qw(
+            BOXCOLOR
+            BOXTEXT
+            IMAGE
+            A
+            C
+            B
+            I
+            SUP
+            SUB
+            MBOX
+            U
+            L
+            PAGEREF
+            SECTIONREF
+            XREF
+            HR
+            E
+            F
+            X
+            LINE_BREAK
+            BR
+           )
+         }=();
+
+# build parser
+my ($parser)=new PerlPoint::Parser;
+
+# and call it
+my $compartment = new Safe;
+$compartment->permit( split(" ", $OPT{safe_opcodes}) );
+#$compartment->permit(qw(:filesys_open :still_to_be_decided :browse));
+#$compartment->permit(qw(:default :base_core :base_mem :subprocess :still_to_be_decided :filesys_open :browse));
+$parser->run(
+             stream  => \@streamData,
+             tags    => \%tagHash,
+             files   => \@ARGV,
+             safe    => $compartment,
+             trace   => TRACE_NOTHING,
+             display => DISPLAY_ALL,
+            );
+
+# build a backend
+my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_NOTHING);
+#my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_BACKEND);
+
+# register backend handlers
+$backend->register(DIRECTIVE_BLOCK,        \&handleBlock);
+$backend->register(DIRECTIVE_COMMENT,      \&handleComment);
+$backend->register(DIRECTIVE_DOCUMENT,     \&handleDocument);
+$backend->register(DIRECTIVE_HEADLINE,     \&handleHeadline);
+$backend->register(DIRECTIVE_LIST_LSHIFT,  \&handleLShift);
+$backend->register(DIRECTIVE_LIST_RSHIFT,  \&handleRShift);
+$backend->register(DIRECTIVE_ULIST,        \&handleList);
+$backend->register(DIRECTIVE_UPOINT,       \&handlePoint);
+$backend->register(DIRECTIVE_OLIST,        \&handleList);
+$backend->register(DIRECTIVE_OPOINT,       \&handlePoint);
+$backend->register(DIRECTIVE_DLIST,        \&handleList);
+$backend->register(DIRECTIVE_DPOINT,       \&handleDPoint);
+$backend->register(DIRECTIVE_DPOINT_ITEM,  \&handleDPointItem);
+$backend->register(DIRECTIVE_SIMPLE,       \&handleSimple);
+$backend->register(DIRECTIVE_TAG,          \&handleTag);
+$backend->register(DIRECTIVE_TEXT,         \&handleText);
+$backend->register(DIRECTIVE_VERBATIM ,    \&handleVerbatim);
+
+my @BUFFER;     # buffer for current text
+my @ERRBUFFER;  # buffer for context of error 
+my $box_bg_color= "blue";
+my $box_fg_color= "white";
+if (defined $OPT{box_color}){
+   $box_bg_color = $OPT{box_color};
+}
+if (defined $OPT{boxttext_color}){
+   $box_fg_color= $OPT{boxtext_color};
+}
+
+my $cellpadding = 5;
+# and run it
+$backend->run(\@streamData);
+
+gen_navigation();
+if ($OPT{debug}){
+  pr_navigation_table();
+}
+
+if ($idx_cnt and ! $OPT{no_index}) {
+  # define last page as index page:
+  $idx_page_cnt = $page_cnt +1;
+  $PAGES[$idx_page_cnt] -> {HD} = $OPT{index_header};
+  $PAGES[$idx_page_cnt] -> {FILENAME} = "$OPT{slide_prefix}_idx.$OPT{slide_suffix}";
+  $PAGES[$idx_page_cnt] -> {LEVEL} = 0;
+  $PAGES[$idx_page_cnt] -> {NUMBER} = "idx";
+  $PAGES[$idx_page_cnt] -> {UP} = 0;
+  $PAGES[$idx_page_cnt] -> {DOWN} = -1;
+  $PAGES[$idx_page_cnt] -> {PREV} = 0;
+  $PAGES[$idx_page_cnt] -> {NEXT} = 1;
+  $PAGES[$idx_page_cnt] -> {FIRST} = 0;
+  $PAGES[$idx_page_cnt] -> {LAST} = -1;
+}
+
+
+## Now do your job: output the pages ...
+for (my $i = 1; $i <= $page_cnt; $i++){
+  my $slide = $PAGES[$i]->{FILENAME};
+  $slide = "$OPT{slide_dir}/$slide";
+  print STDERR " creating $slide ...";
+  print STDERR " Level ",
+   $PAGES[$i]->{LEVEL}, " ===> ",
+   $PAGES[$i]->{HD},
+   , " <===\n";
+  # open file
+  open(SLIDE, "> $slide") or die "Can't open file $slide: $!\n";
+
+  # include header template and replace KEYWORDS
+  if ($OPT{frame_set}){
+    if ($OPT{java_script_navigation}){
+      create_top_page($i);
+      insert_template(*SLIDE, $i, "top", $OPT{bgcolor}, "no_tpl");
+    }
+  } else {
+    insert_template(*SLIDE, $i, "top", $OPT{bgcolor});
+  }
+  if ($OPT{nav_template}){
+    insert_template(*SLIDE, $i, "nav", $OPT{bgcolor});
+  }
+
+  # print page body
+  foreach my $line ( @{$PAGES[$i]->{BODY}} ){
+    # number the headers if option is set
+    if ($OPT{num_headers}){
+      my $num= $PAGES[$i] -> {NUMBER};
+      $line =~ s/_PG_NUM_/$num /;
+    } else {
+      $line =~ s/_PG_NUM_//;
+    }
+
+    # Replace _INTERNAL_SECTION with correct hyperlink
+    $line = replace_internal_links($line, "_INTERN_SECTION", "HD");
+
+    # Replace _INTERNAL_PAGE with correct hyperlink
+    $line = replace_internal_links($line, "_INTERN_PAGE","NUMBER");
+
+    # Replace _INTERNAL_XREF with correct hyperlink
+    $line = replace_internal_links($line, "_INTERN_XREF");
+
+    print SLIDE $line;
+  } # loop over body lines
+
+  if ($OPT{nav_template}){
+    insert_template(*SLIDE, $i, "nav", $OPT{bgcolor});
+  }
+  # include footer template and replace KEYWORDS (navigation ...)
+  if ($OPT{frame_set}){
+    if ($OPT{java_script_navigation}){
+      create_bot_page($i);
+      insert_template(*SLIDE, $i, "bottom", $OPT{bgcolor}, "no_tpl");
+    }
+  } else {
+    insert_template(*SLIDE, $i, "bottom", $OPT{bgcolor});
+  }
+
+  # close file
+  close(SLIDE);
+}  # loop over $PAGES[$i]
+
+gen_contents();
+gen_index() unless $OPT{no_index};
+
+exit 0;
+
+# SUBROUTINES ##############################################################
+
+# helper function
+
+#----------------------------------------------------------
+sub create_top_page {
+  my ($i) = @_;
+  my $fname = "$OPT{slide_dir}/top_" . $PAGES[$i]->{FILENAME};
+  open(TT, "> $fname") or die "cannot open $fname: $!\n";
+  insert_template(*TT, $i, "top", $OPT{bgcolor});
+  insert_template(*TT, $i, "bottom", $OPT{bgcolor}, "no_tpl");
+  close(TT);
+
+} # create_top_page
+#----------------------------------------------------------
+sub create_bot_page {
+  my ($i) = @_;
+  my $fname = "$OPT{slide_dir}/bot_" . $PAGES[$i]->{FILENAME};
+  open(TT, "> $fname") or die "cannot open $fname: $!\n";
+  insert_template(*TT, $i, "top", $OPT{bgcolor}, "no_tpl");
+  insert_template(*TT, $i, "bottom", $OPT{bgcolor});
+  close(TT);
+
+} # create_bot_page
+#----------------------------------------------------------
+sub gen_contents {
+  my $contents = $PAGES[0]->{FILENAME};
+  $contents = "$OPT{slide_dir}/$contents";
+  open(CTX, "> $contents") or die "Can't open contents slide $contents: $!\n";
+  print STDERR " creating $contents ... ===> $OPT{contents_header} <===\n";
+  my $hd;
+  my @TREE;
+
+  if ($OPT{frame_set}){
+    insert_template(*CTX, 0, "top_toc", $OPT{bgcolor}, "no_tpl");
+  } else {
+    insert_template(*CTX, 0, "top_toc", $OPT{bgcolor});
+  }
+  print CTX <<"EOT";
+
+$center_1
+<h1>$OPT{contents_header}</h1>
+$center_2
+
+EOT
+  if ($OPT{tree_applet}){
+    print CTX <<"EOT";
+<applet code="TreeApp.class" codebase="$OPT{tree_base}" alt="Bitte aktivieren Sie Java." name="Tree" width="$OPT{tree_app_width}" height="$OPT{tree_app_height}">
+<param name=font value="Helvetica-plain-14">
+<param name="rootTitle" value="$OPT{title};book.gif,o_book.gif;; $OPT{title}">
+<param name="expanded" value="true">
+<param name="baseURL" value="./">
+
+EOT
+
+  } else {
+    print CTX "<ul>\n";
+  }
+
+  for (my $i=1; $i <= $page_cnt; $i++) {
+    if ($OPT{num_headers}){
+      $hd = $PAGES[$i]->{NUMBER} . " " . $PAGES[$i]->{HD};
+    } else {
+      $hd = $PAGES[$i]->{HD};
+    }
+    my $file = $PAGES[$i]->{FILENAME};
+    if ($OPT{tree_applet}){            #--------------------- TreeApplet
+      my $level = $PAGES[$i]->{LEVEL};
+      $TREE[$level] = $hd;
+      my $title = join('/', @TREE[1 .. $level]);
+      if ($OPT{frame_set}) {
+        print CTX "<param name=\"item$i\" value=\"$title;book.gif,o_book.gif;$file,Data;$hd\">\n";
+      } else {
+        print CTX "<param name=\"item$i\" value=\"$title;book.gif,o_book.gif;$file;$hd\">\n";
+      }
+    } else {                           #--------------------- simple version
+      my $lnk;
+      if ($OPT{java_script_navigation}) {
+        $lnk = "javascript:Nav('top_$file', $f0, '$file', $f1, 'bot_$file', $f2)";
+      } else {
+        $lnk = $file;
+      }
+      $hd = "<a href=\"$lnk\">$hd</a>";
+      print CTX "$li_start $hd $li_end\n";
+    }
+  }
+
+
+  if ($OPT{tree_applet}){              #--------------------- TreeApplet
+    if ($idx_cnt and ! $OPT{no_index}){
+      my $file = "$OPT{slide_prefix}_idx.$OPT{slide_suffix}";
+      $hd = $OPT{index_header};
+      if ($OPT{frame_set}) {
+        print CTX "<param name=\"item$idx_page_cnt\" value=\"Index;book.gif,o_book.gif;$file,Index;$hd\">\n";
+      } else {
+        print CTX "<param name=\"item$idx_page_cnt\" value=\"Index;book.gif,o_book.gif;$file;$hd\">\n";
+      }
+    }
+    print CTX "\n</applet>\n";
+  } else {                             #----------------------simple version
+    if ($idx_cnt and ! $OPT{no_index}){
+      $hd = "<a href=\"$OPT{slide_prefix}_idx.$OPT{slide_suffix}\">$OPT{index_header}</a>";
+      print CTX "$li_start $hd $li_end\n";
+    }
+    print CTX "\n</ul>\n";
+  }
+  if ($OPT{frame_set}){
+    insert_template(*CTX, 0, "bottom_toc", $OPT{bgcolor}, "no_tpl");
+  } else {
+    insert_template(*CTX, 0, "bottom_toc", $OPT{bgcolor});
+  }
+  close(CTX);
+} # gen_contents
+
+#----------------------------------------------------------
+sub gen_index {
+  return unless $idx_cnt;
+  my $index = $PAGES[$idx_page_cnt]->{FILENAME};
+  $index = "$OPT{slide_dir}/$index";
+  open(IDX, "> $index") or die "Can't open index slide $index: $!\n";
+
+  print STDERR " creating $index ... ===> $OPT{index_header} <===\n";
+  if ($OPT{frame_set}){
+    insert_template(*IDX, $idx_page_cnt, "top_idx", $OPT{bgcolor}, "no_tpl");
+  } else {
+    insert_template(*IDX, $idx_page_cnt, "top_idx", $OPT{bgcolor});
+  }
+  print IDX <<"EOT";
+
+<a name="TOP"></a>
+$center_1
+<h1>$OPT{index_header}</h1>
+$center_2
+
+<ul>
+EOT
+  print IDX "<h3>\n";
+  foreach my $LL (qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z)){
+    if (defined $IDX_{$LL}){
+      print IDX " <a href=\"#m_$LL\">$LL</a>";
+    } else {
+      print IDX " $LL";
+    }
+  }
+  print IDX "</h3>\n";
+  my $file_toc = $PAGES[0]->{FILENAME};
+  print IDX "<a href=\"$file_toc\">$OPT{contents_header}</a>\n";
+  print IDX "\n<HR>\n";
+
+  my $last_LETTER = "";
+  my $LETTER = "";
+  my $LIST_END = "";
+
+#print STDERR join "\n", sort keys %INDEX, "\n";
+
+  foreach my $idx (sort keys %INDEX) {
+    for (my $ii=0; $ii < @{$INDEX{$idx}->{A}}; $ii++){
+      my $anchor = ${$INDEX{$idx}->{A}}[$ii];
+      my $val    = ${$INDEX{$idx}->{V}}[$ii];
+      if ($anchor =~ /index_(\d+)/){
+        my $pg = $1;
+        $LETTER = uc substr($idx,0,1);
+        if ($LETTER ne $last_LETTER){
+          print IDX $LIST_END;
+          $LIST_END = "</UL>\n";
+          print IDX "<a name=\"m_$LETTER\"></a>\n";
+          my $ltr;
+          if ($LETTER eq "-"){
+            $ltr = "special";
+          } elsif ($LETTER eq "1"){
+            $ltr = "0-9";
+          } else {
+            $ltr = $LETTER;
+          }
+          print IDX "<h1><a href=\"#TOP\">$ltr</a></H1>\n";
+          print IDX "<UL>\n";
+        }
+        $last_LETTER = $LETTER;
+        my $file = $PAGES[$pg]->{FILENAME};
+        my $lnk;
+        if ($OPT{java_script_navigation} and !$OPT{tree_applet}) {
+          $lnk = "javascript:Nav('top_$file', $f0, '$file#$anchor', $f1, 'bot_$file', $f2)";
+        } else {
+          $lnk = $file;
+        }
+        if ($OPT{frame_set}){
+          if ($OPT{tree_applet}){
+            print IDX "<a href=\"$lnk#$anchor\" target=\"Data\">$val</a><BR>\n";
+          } else {
+            print IDX "<a href=\"$lnk\">$val</a><BR>\n";  # anchor is inside jave script call
+          }
+        } else {
+          print IDX "<a href=\"$lnk#$anchor\">$val</a><BR>\n";
+        }
+      }
+    }
+  }
+
+  print IDX "\n</ul></ul>\n";
+  if ($OPT{frame_set}){
+    insert_template(*IDX, $idx_page_cnt, "bottom_idx", $OPT{bgcolor}, "no_tpl");
+  } else {
+    insert_template(*IDX, $idx_page_cnt, "bottom_idx", $OPT{bgcolor});
+  }
+  close(IDX);
+} # gen_index
+
+#----------------------------------------------------------
+
+sub gen_navigation {
+  # caclulate navigation: next, prev, up and down page numbers
+  my $k;
+  my ($up, $down, $first, $last);
+  my ($prev_level, $level);
+  my @NUM = (-999, 0);  # page numbers have the form $NUM[1].$NUM[2].$NUM[3] ...
+  my @NFIRST;  # page index of current first page in level $k
+  my @NLAST;   # page index of current last page in level $k
+  my @NUP;     # page index of current up page in level $k
+  $prev_level = 0;
+  foreach (my $i = 1; $i <= $page_cnt; $i++){
+    $level = $PAGES[$i] -> {LEVEL};
+    if ($level == $prev_level){
+      $NUM[$level]++;
+      $PAGES[$i] -> {UP} = $up;
+      $PAGES[$i] -> {DOWN} = -1;
+      $PAGES[$i] -> {LAST} = -1;
+      $PAGES[$i] -> {NEXT} = -1;
+      $PAGES[$i] -> {FIRST} = $first;
+      $PAGES[$i] -> {PREV} = $i-1;
+      $PAGES[$i-1] -> {NEXT} = $i;
+
+    } elsif ($level > $prev_level) {
+      $NUM[$level] = 1;
+      $NUM[$level + 1] = 0;  # prepare next level
+      $up = $i-1;
+      $first = $i;
+      $NUP[$level] = $up;
+      $NFIRST[$level] = $first;
+      $PAGES[$up] -> {DOWN} = $i;
+      $PAGES[$i] -> {UP} = $up;
+      $PAGES[$i] -> {DOWN} = -1;
+      $PAGES[$i] -> {LAST} = -1;
+      $PAGES[$i] -> {FIRST} = $first;
+      if ($OPT{linear_mode}){
+        $PAGES[$i] -> {PREV} = $i-1;
+        $PAGES[$i-1] -> {NEXT} = $i;
+      } else {
+        $PAGES[$i] -> {PREV} = -1;
+        $PAGES[$i] -> {NEXT} = -1;
+      }
+
+    } else {
+      $NUM[$level]++;
+      for (my $l = $prev_level; $l >= $level; $l--){
+        $last = $NLAST[$l];
+        for ($k=$NFIRST[$l]; $k<=$last; $k++){
+          if ($PAGES[$k]->{LEVEL} == $l){
+            $PAGES[$k] -> {LAST} = $last;
+          }
+        }
+      }
+      $first = $NFIRST[$level];
+      $up    = $NUP[$level];
+      $PAGES[$i] -> {DOWN} = -1;
+      $PAGES[$i] -> {UP} = $up;
+      $PAGES[$i] -> {FIRST} = $first;
+      $PAGES[$i] -> {LAST} = -1;
+      if ($OPT{linear_mode}){
+        $PAGES[$i] -> {PREV} = $i-1;
+        $PAGES[$i-1] -> {NEXT} = $i;
+      } else {
+        $PAGES[$i] -> {PREV} = $NLAST[$level];
+        $PAGES[$NLAST[$level]] -> {NEXT} = $i;
+
+      }
+    }
+    $NLAST[$level] = $i;
+    my $number = $NUM[1];
+    for ($k=2; $k<=$level; $k++){
+      $number = "$number.$NUM[$k]";
+    }
+    $PAGES[$i] -> {NUMBER} = $number;
+    $prev_level = $level;
+ }
+
+  # fix last pointers 
+  $NFIRST[0] = 0;
+  $NLAST[0] = $page_cnt;
+# print STDERR "NFIRST @NFIRST\n";
+# print STDERR "NLAST @NLAST\n";
+  for (my $l=$prev_level; $l >= 0; $l--){
+    my $lst = $NLAST[$l];
+    for ($k=$NFIRST[$l]; $k<=$lst; $k++){
+      if ($PAGES[$k]->{LEVEL} == $l){
+        $PAGES[$k] -> {LAST} = $lst;
+      }
+    }
+  }
+} # gen_navgation
+
+#----------------------------------------------------------
+# test print
+sub pr_navigation_table {
+  print STDERR " i      number    next    prev   up     down  first   last\n";
+  for (my $i=1; $i <= $page_cnt; $i++){
+    printf( STDERR "%4d  %7s  %6s %6s %6s %6s %6s %6s\n",
+      $i, 
+      $PAGES[$i] -> {NUMBER},
+      $PAGES[$i] -> {NEXT},
+      $PAGES[$i] -> {PREV},
+      $PAGES[$i] -> {UP},
+      $PAGES[$i] -> {DOWN},
+      $PAGES[$i] -> {FIRST},
+      $PAGES[$i] -> {LAST} 
+    );
+  }
+} # pr_navigation_table
+
+#----------------------------------------------------------
+sub start_new_page {
+  my ($level, @BF) = @_;
+  $page_cnt ++;
+  my $pgn = sprintf("%04d", $page_cnt);
+  $PAGES[$page_cnt] = {
+         BODY => [],
+         LEVEL => $level,
+         FILENAME => "$OPT{slide_prefix}$pgn.$OPT{slide_suffix}",
+         HD  => join("", @BF),
+
+       };
+  $page_ref = $PAGES[$page_cnt] -> {BODY};
+  my $hd = $PAGES[$page_cnt] -> {HD};
+  $ANCHOR{$hd} = $page_cnt; # insert anchor for this page
+  push @{$PAGES[$page_cnt]->{BODY}}, "<a name=\"$hd\">";
+
+} # start_new_page
+
+#----------------------------------------------------------
+# simple directive handlers
+sub handleSimple {
+  push @BUFFER, escapes($_[2]);
+} # handleSimple
+
+#----------------------------------------------------------
+sub handleHeadline {
+  # $_[2] contains the level number of this header
+  if ($_[1]==DIRECTIVE_START) {
+    flush;
+  } else {
+    start_new_page($_[2], @BUFFER);
+    push_page $page_ref, "\n$center_1\n<H1>_PG_NUM_";
+    flush;
+    push_page $page_ref, "\n</H1>$center_2\n";
+  }
+} # handleHeadline
+
+#----------------------------------------------------------
+sub handleList {
+  flush;
+  if ($_[0]==DIRECTIVE_ULIST){
+     $LIST = "UL";
+  } elsif ($_[0]==DIRECTIVE_OLIST){
+     $LIST = "OL";
+  } elsif ($_[0]==DIRECTIVE_DLIST){
+     $LIST = "DL";
+  }
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "\n<$LIST>\n";
+  } else {
+    push_page $page_ref, "</$LIST>\n";
+    @BUFFER = ();
+  }
+  
+} # handleList
+
+#----------------------------------------------------------
+sub handlePoint {
+  flush;
+  if ($_[1]==DIRECTIVE_START){
+    if ($LIST eq "OL"){
+      push_page $page_ref, $lo_start;
+    } else {
+      push_page $page_ref, $li_start;
+    }
+  } else {
+    if ($LIST eq "OL"){
+      push_page $page_ref, $lo_end;
+    } else {
+      push_page $page_ref, $li_end;
+    }
+    @BUFFER = ();
+  }
+} # handlePoint
+
+#----------------------------------------------------------
+sub handleDPoint {
+  flush;
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "<DT>\n";
+  } else {
+    push_page $page_ref, "\n</DD>\n";
+    @BUFFER = ();
+  }
+} # handleDPoint
+#----------------------------------------------------------
+sub handleDPointItem {
+  flush;
+  if ($_[1]==DIRECTIVE_START){
+    # no action
+  } else {
+    push_page $page_ref, "</DT>\n<DD>\n";
+    @BUFFER = ();
+  }
+} # handleDPointItem
+
+#----------------------------------------------------------
+sub handleText {
+  flush;
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "\n\n<P>\n";
+  } else {
+    push_page $page_ref, "\n</P>\n";
+  }
+} # handleText
+
+#----------------------------------------------------------
+sub handleBlock { # code block with TAG recognition
+  handleVerbatim( $_[0], $_[1], $_[2]);
+} # handleBlock
+
+#----------------------------------------------------------
+sub handleLShift {
+  push_page $page_ref, "</UL>\n";
+} # handleLShift
+
+#----------------------------------------------------------
+sub handleRShift {
+  push_page $page_ref, "<UL>\n";
+} # handleRShift
+
+#----------------------------------------------------------
+sub handleVerbatim { # verbatim block without TAG recognition
+  flush;
+  my $bld_on = "<B>";
+  my $bld_off = "</B>";
+  if (uc($OPT{boxtext_bold}) eq "OFF"){
+     $bld_on = "";
+     $bld_off = "";
+  }
+  if ($_[1]==DIRECTIVE_START){
+    push_page $page_ref, "\n$block_indent_0\n<TABLE CELLPADDING=$cellpadding><TR><TD bgcolor=\"$box_bg_color\"> ";
+    push_page $page_ref, "$bld_on<FONT COLOR=\"$box_fg_color\">\n<PRE>\n\n";
+  } else {
+    push_page $page_ref, "</PRE>\n</FONT>$bld_off\n</TD></TR></TABLE>$block_indent_1\n";
+  }
+} # handleVerbatim
+
+#----------------------------------------------------------
+sub handleComment {
+    @BUFFER = (); # skip buffer contents
+} # handleComment
+
+#----------------------------------------------------------
+sub handleTag {
+
+  # special tags
+
+  if ($_[2] eq "C") {                                           # special HTML escapes
+    flush;
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      push_page $page_ref, "</CODE>";
+    } else {
+      push_page $page_ref, "<CODE>";
+    }
+    return;
+  }
+  if ($_[2] eq "E") {                                           # special HTML escapes
+    flush;
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      push_page $page_ref, ";";
+    } else {
+      push_page $page_ref, "\&";
+    }
+    return;
+  }
+
+  if ($_[2] eq "MBOX"){
+    flush;
+  # if ($_[1]==DIRECTIVE_START){
+  #   push_page $page_ref, "\\mbox{";
+  # } else {
+  #   push_page $page_ref, "}\$";
+  # }
+    return;
+  }
+
+  # character formatting Tags: handle B I U SUP SUB
+  if ($_[2] eq "B"  or $_[2] eq "I"  or  $_[2] eq "U" or $_[2] eq "SUB" or $_[2] eq "SUP"  ){
+    flush;
+    if ($_[1]==DIRECTIVE_START){
+      push_page $page_ref, "<$_[2]>";
+    } else {
+      push_page $page_ref, "</$_[2]>";
+    }
+    return;
+  }
+
+  if ($_[2] eq "LINE_BREAK" or $_[2] eq "BR") {                       # line break
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      @BUFFER = ();
+      push_page $page_ref, "<BR>\n";
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "HR" ) {                       # horizontal line
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      @BUFFER = ();
+      push_page $page_ref, "<HR>\n";
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "BOXCOLOR") {                                          # box color
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      $box_bg_color = $BUFFER[0];
+      @BUFFER = ();
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "BOXTEXT") {                                          # box text color
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      $box_fg_color = $BUFFER[0];
+      @BUFFER = ();
+    } else {
+      flush;
+    }
+    return;
+  }
+
+  if ($_[2] eq "IMAGE") {                                          # image
+    flush;
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'src'}) {
+        die "*** ERROR: Image without 'src' parameter\n";
+      }
+      my $file = $_[3]->{'src'};
+      my $opt = "";
+      if ( defined $_[3]->{'height'}) {
+        my $height = $_[3]->{'height'};
+        $opt .= " HEIGHT=\"$height\"";
+      }
+      if ( defined $_[3]->{'width'}) {
+        my $width = $_[3]->{'width'};
+        $opt .= " WIDTH=\"$width\"";
+      }
+      if ( defined $_[3]->{'align'}) {
+        my $align = $_[3]->{'align'};
+        $opt .= " ALIGN=\"$align\"";
+      }
+      if ( defined $_[3]->{'alt'}) {
+        my $alt = $_[3]->{'alt'};
+        $opt .= " ALT=\"$alt\"";
+      } else {
+        $opt .= " ALT=\"$file\"";
+      }
+      push_page $page_ref, "<IMG SRC=\"$file\"$opt>";
+    }
+    return;
+  }
+
+  if ($_[2] eq "F" ) {                       # set color and size
+    flush;
+    if ($_[1]==DIRECTIVE_START){
+      my $params = "";
+      if ( defined $_[3]->{'face'}) {
+        $params = "$params FACE=$_[3]->{'face'}";
+      }
+      if ( defined $_[3]->{'color'}) {
+        $params = "$params COLOR=$_[3]->{'color'}";
+      }
+      if ( defined $_[3]->{'size'}) {
+        $params = "$params SIZE=$_[3]->{'size'}";
+      }
+      push_page $page_ref, "<FONT$params>";
+    } else {
+      push_page $page_ref, "</FONT>";
+    }
+    return;
+  }
+
+  if ($_[2] eq "A") {                                                # Anchor Tag
+    flush;
+  # print STDERR "@_\n";
+  # print STDERR Dumper($_[3]);
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'name'}) {
+        die "*** ERROR: Anchor without 'name' parameter\n";
+      }
+      my $a_name = $_[3]->{'name'};
+      push_page $page_ref, "<A name=\"$a_name\"></A>";
+      # Remember page number for later reference:
+      if (defined $ANCHOR{$a_name}){
+        pp_warn "anchor name $a_name used twice !!\n";
+      } else {
+        $ANCHOR{$a_name} = $page_cnt;
+      }
+    }
+    return;
+  }
+  if ($_[2] eq "L") {                                                # general URL
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'url'}) {
+        pp_warn "ERROR: Hyperlink \L without 'url' parameter\n";
+      }
+      my $link_text = join("",@BUFFER);
+      my $url = $_[3]->{'url'};
+        @BUFFER = ();
+      push_page $page_ref, "<A HREF=\"$url\">$link_text</A>";
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "PAGEREF") {                                          # page reference
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'name'}) {
+        pp_warn "ERROR: PAGEREF without 'name' parameter\n";
+      }
+      my $a_name = $_[3]->{'name'};
+      push_page $page_ref, "_INTERN_PAGE:$a_name:_END";    # to be replaced later ...
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "SECTIONREF") {                                       # section header reference
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'name'}) {
+        pp_warn "ERROR: PAGEREF without 'name' parameter\n";
+      }
+      my $a_name = $_[3]->{'name'};
+      push_page $page_ref, "_INTERN_SECTION:$a_name:_END"; # to be replaced later ...
+    } else {
+      flush;
+    }
+    return;
+  }
+  if ($_[2] eq "XREF") {                                       # internal cross reference
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      if ( !defined $_[3]->{'name'}) {
+        pp_warn "ERROR: XREF without 'name' parameter\n";
+      }
+      my $ref_text = join("",@BUFFER);
+        @BUFFER = ();
+      my $a_name = $_[3]->{'name'};
+      push_page $page_ref, "_INTERN_XREF:$a_name:TXT:$ref_text:_END"; # to be replaced later ...
+    } else {
+      flush;
+    }
+    return;
+  }
+
+  if ($_[2] eq "X") {                                          # index entry
+    if ($_[1]==DIRECTIVE_COMPLETE) {
+      my $idx = join("",@BUFFER);  # text of index entry
+      $idx_cnt ++;
+      my $key_idx = $idx;  # key
+      $key_idx =~ s/Ä/Ae/g;
+      $key_idx =~ s/Ü/Ue/g;
+      $key_idx =~ s/Ö/Oe/g;
+      $key_idx =~ s/ä/ae/g;
+      $key_idx =~ s/ü/ue/g;
+      $key_idx =~ s/ö/oe/g;
+      $key_idx =~ s/ß/ss/g;
+      $key_idx =~ tr/A-Z/a-z/;
+      $key_idx = htm2char($key_idx);  # translate to char for sorting purpose
+      if ($key_idx =~ /^[0-9]/){
+        $key_idx = "1$key_idx";
+      } elsif ($key_idx =~ /^[a-zA-Z]/){
+        # no action
+      } else {
+        $key_idx = "-$key_idx";
+      }
+      my $index_anchor = "index_$page_cnt" . "_$idx_cnt"; # uniq anchor name
+      if (!defined ($INDEX{$key_idx}->{A})){
+        $INDEX{$key_idx}->{A} = [$index_anchor];
+        $INDEX{$key_idx}->{V} = [$idx];
+      } else {
+        push @{$INDEX{$key_idx}->{A}}, $index_anchor;
+        push @{$INDEX{$key_idx}->{V}}, $idx;
+      }
+      $IDX_{ uc substr($key_idx,0,1) } = 1;
+      push_page $page_ref, "<A name=\"$index_anchor\"></A>";
+      if ( defined $_[3]->{'mode'} and $_[3]->{'mode'} eq "index_only"){
+        @BUFFER = ();
+      }
+    } else {
+      flush;
+    }
+    return;
+  }
+
+# TODO border width configurable
+  if ($_[2] eq "TABLE") {                                       # TABLE
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      if ( !defined $_[3]->{'separator'}) {
+#       pp_warn "ERROR: TABLE without 'separator' parameter\n";
+      }
+      my $sep = $_[3]->{'separator'};
+      my $table_bgcolor="";
+      my $border="border=2";
+      if ( defined $_[3]->{'border'}) {
+        $border="BORDER=\"$_[3]->{'border'}\"";
+      }
+      if ( defined $_[3]->{'bgcolor'}) {
+        $table_bgcolor=" BGCOLOR=\"$_[3]->{'bgcolor'}\"";
+      }
+      push_page $page_ref, "<TABLE $border$table_bgcolor>";
+      if ( defined $_[3]->{'head_bgcolor'}) {
+        $table_hl_bgcolor=" BGCOLOR=\"$_[3]->{'head_bgcolor'}\"";
+      }
+    } else {
+      push_page $page_ref, "</TABLE>\n<P>\n";
+    }
+    return;
+  }
+
+# TODO make it configurable via options
+  if ($_[2] eq "TABLE_HL") {                                       # TABLE
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      push_page $page_ref, "<TD$table_hl_bgcolor><B>";
+    } else {
+      push_page $page_ref, "</B></TD>";
+    }
+    return;
+  }
+
+  if ($_[2] eq "TABLE_ROW") {                                       # TABLE
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      push_page $page_ref, "<TR>\n";
+    } else {
+      push_page $page_ref, "</TR>\n";
+      $table_hl_bgcolor="";
+    }
+    return;
+  }
+
+  if ($_[2] eq "TABLE_COL") {                                       # TABLE
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      push_page $page_ref, "<TD$table_hl_bgcolor>";
+    } else {
+      push_page $page_ref, "</TD>";
+    }
+    return;
+  }
+
+  if ($_[2] eq "EMBED") {                                       # TABLE
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      if ( !defined $_[3]->{'lang'}) {
+        pp_warn "ERROR: EMBED without 'lang' parameter\n";
+      }
+      elsif ($_[3]->{'lang'} eq "HTML"){
+        $embedded_html = 1;
+      }
+    } else {
+      $embedded_html = 1;
+    }
+    @BUFFER=();
+    return;
+  }
+
+
+  pp_warn "unknown or not yet implemented tag: $_[2], $_[1]\n";
+} # handleTag
+
+#----------------------------------------------------------
+sub handleDocument {
+  if ($_[1]==DIRECTIVE_START) {
+    warn "Document (base $_[2]).\n";
+
+  }
+  else {
+
+    warn "Document (base $_[2]).\n";
+  }
+} # handleDocument
+
+#----------------------------------------------------------
+sub flush {
+  push_page $page_ref, @BUFFER;
+  push @ERRBUFFER, @BUFFER;
+  @BUFFER = ();
+  # trim ERRBUFFER:
+  @ERRBUFFER = grep (!/^\s*$/ ,@ERRBUFFER);
+  for (my $k=1;$k<scalar(@ERRBUFFER)-6;$k++){
+    shift @ERRBUFFER;
+  }
+}
+
+#----------------------------------------------------------
+sub pp_warn {
+  my ($message) = @_;
+  print STDERR "*** $me: $message\n";
+  print STDERR "context: ------\n@ERRBUFFER\n---------------\n";
+} # pp_warn
+
+#----------------------------------------------------------
+sub push_page {
+  # push $text to current page buffer
+  my ($page_ref, @text) = @_;
+  push @$page_ref, @text;
+} # push_page
+
+#----------------------------------------------------------
+sub htm2char {
+  my ($key_idx) = @_;
+  # translate to char for sorting purpose
+  $key_idx =~ s/\&gt;/>/g;
+  $key_idx =~ s/\&lt;/</g;
+  $key_idx =~ s/\&amp;/\&/g;
+  $key_idx =~ s/\&Uuml;/Ue/g;
+  $key_idx =~ s/\&uuml;/ue/g;
+  $key_idx =~ s/\&Auml;/Ae/g;
+  $key_idx =~ s/\&auml;/ae/g;
+  $key_idx =~ s/\&Ouml;/Oe/g;
+  $key_idx =~ s/\&ouml;/oe/g;
+  $key_idx =~ s/\&szlig;/ss/g;
+  return $key_idx;
+} # htm2char
+
+#----------------------------------------------------------
+sub escapes {
+    my $line = shift;
+    return $line if ($embedded_html);
+    $line =~ s!&!\&amp;!g;
+    $line =~ s!<!\&lt;!g;
+    $line =~ s!>!\&gt;!g;
+    $line =~ s!"!\&quot;!g;
+    return $line;
+} #" escapes
+
+#----------------------------------------------------------
+sub insert_template {
+  my ($f, $page_no, $what, $bgcolor, $no_tpl) = @_;
+
+  my $tpl = "";
+  if ($what eq "top" or $what eq "top_idx" or 
+    $what eq "nav" or $what eq "top_toc"){
+    $tpl = $OPT{$what."_template"};
+    print $f <<"EOT";
+<HTML>
+<HEAD>
+EOT
+  if ($OPT{frame_set} and $OPT{java_script_navigation}) {
+    java($f);
+  }
+    print $f <<"EOT";
+<TITLE>$PAGES[$page_no]->{HD}
+</TITLE>
+</HEAD>
+<!-- *************************************************** -->
+<BODY bgcolor="$bgcolor">
+EOT
+  }
+  elsif ($what eq "bottom" or $what eq "bottom_idx" or $what eq "bottom_toc"){
+    $tpl = $OPT{$what."_template"};
+  }
+
+  if ($tpl and ! $no_tpl){
+    open(TPL, $tpl) or die "Can't open template $tpl: $!\n";
+
+    # insert contents of template and replace KEYWORDS
+    my ($txt_first, $txt_last, $txt_next, $txt_prev, $txt_up, $txt_down, $txt_index, $txt_cont);
+    my ($url_first, $url_last, $url_next, $url_prev, $url_up, $url_down, $url_index, $url_cont);
+  
+    ($txt_next, $url_next)     = mk_url($page_no, "NEXT");
+    ($txt_prev, $url_prev)     = mk_url($page_no, "PREV");
+    ($txt_first, $url_first)   = mk_url($page_no, "FIRST");
+    ($txt_last, $url_last)     = mk_url($page_no, "LAST");
+    ($txt_up, $url_up)         = mk_url($page_no, "UP");
+    ($txt_down, $url_down)     = mk_url($page_no, "DOWN");
+  
+    $url_cont = $PAGES[0]->{FILENAME};
+    $url_cont = $OPT{frame_set} ?
+          $url_cont.'" target="Index'
+       :  $url_cont;
+    $url_cont = "<a href=\"$url_cont\">";
+  
+    $txt_index = "";
+    if ($idx_cnt and ! $OPT{no_index}) {
+      $url_index = $PAGES[$page_cnt]->{FILENAME};
+      $url_index = "<a href=\"$url_index\">";
+    } else {
+      $url_index = "";
+    }
+    my $pgno;
+    $pgno = $PAGES[$page_no]->{NUMBER};
+    while(<TPL>){
+  
+       # Navigation / Text
+       s/<[\s\w="]*URL_FIRST[\s"]*>/$url_first/g;
+       s/TXT_FIRST/$txt_first/g;
+       s/<[\s\w="]*URL_LAST[\s"]*>/$url_last/g;
+       s/TXT_LAST/$txt_last/g;
+       s/<[\s\w="]*URL_PREV[\s"]*>/$url_prev/g;
+       s/TXT_PREV/$txt_prev/g;
+       s/<[\s\w="]*URL_NEXT[\s"]*>/$url_next/g;
+       s/TXT_NEXT/$txt_next/g;
+       s/<[\s\w="]*URL_UP[\s"]*>/$url_up/g;
+       s/TXT_UP/$txt_up/g;
+       s/<[\s\w="]*URL_DOWN[\s"]*>/$url_down/g;
+       s/TXT_DOWN/$txt_down/g;
+       s/<[\s\w="]*URL_CONTENTS[\s"]*>/$url_cont/g;
+       s/TXT_CONTENTS/$OPT{contents_header}/g;
+       s/<[\s\w="]*URL_INDEX[\s"]*>/$url_index/g;
+       s/TXT_INDEX/$OPT{index_header}/g;
+       s/PAGE_CNT/$page_cnt/g;
+       s/PAGE/$pgno/g;
+       s/TITLE/$OPT{title}/g;
+      print $f $_;
+    }
+    close(TPL);
+  }
+
+  if ($what eq "bottom"){
+    print $f "</BODY>\n</HTML>\n";
+  }
+} # insert_template
+#----------------------------------------------------------
+sub mk_url {
+  my ($page_no, $DIR) = @_;
+  my ($txt, $url) = ("", "<a name=\"xx\">");
+
+  if (defined $PAGES[$page_no]->{$DIR}  and  $PAGES[$page_no] ->{$DIR} >= 0) {
+    $txt = $PAGES[$PAGES[$page_no] ->{$DIR}] -> {HD};
+    $url =  $PAGES[$PAGES[$page_no] ->{$DIR}] -> {FILENAME};
+    $url = $OPT{java_script_navigation} ?
+        "javascript:Nav('top_$url', $f0, '$url', $f1, 'bot_$url', $f2)"
+     :  $url;
+    $url = "<a href=\"$url\">";
+  }
+  return ($txt, $url);
+
+}# mk_url
+
+#----------------------------------------------------------
+
+sub replace_internal_links {
+    my ($line, $INTERN_TYPE, $REF) = @_;
+    my ($a_name, $txt);
+
+    # Replace INTERN_TYPE with correct hyperlink
+    while (1) {
+      if ($INTERN_TYPE eq "_INTERN_XREF"){
+        last if ($line !~ /$INTERN_TYPE:(.*?):TXT:(.*?):_END/);
+        $a_name = $1;
+        $txt = $2 || "UNDEF XREF TEXT";
+      } else {
+        last if ($line !~ /$INTERN_TYPE:(.*?):_END/);
+        $a_name = $1;
+        $txt = $PAGES[$ANCHOR{$a_name}] -> {$REF};
+      }
+      if (! defined $ANCHOR{$a_name}) {
+        pp_warn "$INTERN_TYPE with undefined anchor name '$a_name' detected\n";
+        $line =~ s/$INTERN_TYPE:.*?:_END/<A HREF="UNDEF#$a_name">UNDEF<\/A>/;
+        next;
+      }
+      my $filename = $PAGES[$ANCHOR{$a_name}] -> {FILENAME};
+      $line =~ s/$INTERN_TYPE:.*?:_END/<A HREF="$filename#$a_name">$txt<\/A>/;
+    }
+    return $line;
+} # replace_internal_links
+
+#----------------------------------------------------------
+sub copy_file { # should work on each system ...
+  my ($from, $to) = @_;
+  open(FROM, "< $from") or die "Can't open $from: $!\n";
+  open(TO  , "> $to")   or die "Can't open $to: $!\n";
+  while(<FROM>) {
+    print TO $_;
+  }
+  close(FROM); close(TO);
+} # copy_file
+
+#----------------------------------------------------------
+sub java {
+  my $f = shift;
+  print $f <<EOT;
+<script language="JavaScript">
+    <!--
+     function Nav(URL1,F1,URL2,F2,URL3,F3)
+     {
+      parent.frames[F1].location.href=URL1;
+      parent.frames[F2].location.href=URL2;
+      parent.frames[F3].location.href=URL3;
+     }
+    //-->
+</script>
+EOT
+} # java
+         
+
+__END__
+
+
+
+# = POD SECTION ============================================================
+
+=head1 NAME
+
+B<pp2html> - simple slide generator
+
+=head1 VERSION
+
+This manual describes version B<1.09>.
+
+=head1 SYNOPSIS
+
+  pp2html --help
+  pp2html [@options_file] [options] slide_text 
+
+=head1 DESCRIPTION
+
+C<pp2html> creates a set of HTML files for a foilset based on
+a simple textfile F<slide_text>. Due to its formatting features and
+the capability of creating navigation, contents and index pages,
+C<pp2html> is also a suitable tool for writing online documentation.
+
+A slide is normally made up by
+a header and a number of bullet items:
+
+  Example of a Slide
+
+  * Contains a head line ("Example of a Slide")
+
+  * Should have some bullet items
+
+  * May have footer and/or header section with company logo and navigation links
+
+The intention of C<pp2html> is to simply write down your headers and
+bullet items just like above in an ASCII file and then automatically create 
+a set of HTML files ready for presentation.
+
+The main features of C<pp2html> are: 
+
+=over 4
+
+=item *
+
+Simple ASCII input file for your text
+
+=item *
+
+Optional templates for header and footer of the slides (e.g. for
+company logo, hyperlinks for navigation, copyright note etc.)
+
+=item *
+
+Rudimentary formatting capabilities
+
+=item *
+
+Creation of a contents page with links to all slides
+
+=item *
+
+Creation of an index page with links to all keywords which have
+been indexed
+
+=item *
+
+Optional layout as HTML frameset (header frame, contents frame,
+footer frame and eventually index frame). The footer frame has
+always the same position on the screen.
+
+=item *
+
+The index frame may use the TreeApplet which provides convenient
+access to all pages
+
+For more information see: http://www.mcsoftware.com.au/java/TreeControl/treeControl.html 
+
+=back
+
+The following documentation describes in detail the syntax of a
+pp2html input file and all options of C<pp2html>.
+
+=head1 SYNTAX of pp2html Files
+
+The format for the C<pp2html> input files is called C<PerlPoint>-Format (perl point format).
+There are the following main components of an input file for C<pp2html>:
+
+=over 4
+
+=item *
+
+Comments
+
+=item *
+
+Headers
+
+=item *
+
+Bullet Items
+
+=item *
+
+Numbered Lists
+
+=item *
+
+Definition Lists
+
+=item *
+
+Paragraphs
+
+=item *
+
+Blocks
+
+=item *
+
+Verbatim Blocks
+
+=back
+
+=head2 Comments
+
+Lines which start with a double slash C<//> are treated as comments. They
+are not included in the slides.
+
+=head2 Headers
+
+Headers are lines which start with a C<=> sign. The number of C<=> signs
+determines the level of the header:
+
+ =This is a level 1 header
+
+ ==This is a level 2 header
+
+It is necessary to put a blank line after the header.
+If you use headers of different levels then you get a structured
+document with chapter numbering e.g.
+
+  1 First chapter
+  1.1 Subsection 1
+  1.2 Subsection 2
+  2 Second chapter
+
+The chapter numbers depend on the position of the page and the level
+of its header.
+
+=head2 Bullet Items and Numbered Lists
+
+A bullet item is indicated by an asterisk C<*> in the first column.
+
+ * Item one is very long
+ and continued on the next line
+
+ * Item 2
+
+ * Item Three
+
+If you use hash signs C<#> instead of asterisks, the list will
+autmatically be a numbered list:
+
+ # First
+
+ # Second
+
+B<Note:> It is important to put a blank line after each bullet item, otherwise
+the text on the following line belongs to the same bullet.
+
+=head2 Paragraphs
+
+Text which is not indented is treated as a normal paragraph.
+In HTML terminology this is a <P> ... </P> container.
+
+=head2 Blocks
+
+Text which is indented by one ore more blanks will be put in a 
+colored box. The text will be treated as I<pre formatted>.
+Special formatting tags (see below) are still applied.
+
+The HTML representation is a <TABLE> with colored background
+and the text itself is put into a <PRE> ... </PRE> container.
+
+=head2 Verbatim Blocks
+
+Verbatim Blocks are copied I<as is> into the HTML page. Special
+formatting tags (see below) are not applied. (Only HTML meta
+characters are escaped, for example the "E<lt>" or "E<gt>" sign.)
+This means that Verbatim Blocks are suitable for code examples:
+Just cut and paste your piece of code into the C<pp2html> input file
+and put the verbatim box markers around:
+
+  << END_OF_BOX
+  sub verbatim_text
+  {
+    for example some piece of code;
+  }
+  END_OF_BOX
+
+The block begins with `E<lt>E<lt>MARK' and ends with the text
+C<MARK> on a separate line. This is like a C<here document> in perl
+or in a C-shell.
+
+=head2 Special Formatting Tags
+
+Some rudimentary formatting is also supported by C<pp2html>. It is
+similar syntax as in POD:
+
+  \C<this is code>
+  \B<bold face>
+  \I<italic>
+  \E<lt>  \E<gt>
+  \E<uml>
+  \U<underline>
+  \SUP<superscript>
+  \SUB<subscript>
+
+
+
+Note that the tags are preceeded by a backslash. This is necessary because
+the C<PerlPoint> format knows several tags that are longer than one character.
+The general form of C<PerlPoint> tags is
+
+  \TAGNAME{param1=value1 param2=value2 ...}<tag body>
+
+The parameter list is optional and enclosed in curly braces.
+
+It is possible to switch the box color from case to case with the
+following tags:
+
+  \BOXCOLOR<yellow>
+
+  \BOXTEXT<blue>
+
+=head2 Color and text size
+
+There is a special tag 
+
+  \F{color=value size=value}<text>
+
+which allows to set color and size for a text. This is translated to the HTML E<lt>FONTE<gt> tag.
+
+
+=head2 Using Hyperlinks
+
+In order to use internal hyperlinks there must be targets for those links.
+A link target or C<anchor>  is defined by the following tag:
+
+  \A{name="target_name"}
+
+An internal link to this target is written in the form:
+
+  \PAGEREF{name=target_name}
+  \SECTIONREF{name=target_name}
+
+The first link is replaced with the page number of the page which contains the target.
+The second link is replaced with the page header of the corresponding page.
+
+NOTE: Each page automatically gets an anchor with the page header as target name. For this
+reason it is possible to use SECTIONREF tags with the name=page_title parameter to get
+inernal links to each page.
+
+External hyperlinks have the form:
+
+ \L{url=http://wwwpixel.de}<http//www.pixel.de>
+
+
+=head2 Index and Cross References
+
+A cross reference to an internal target has the form:
+
+  \XREF{name=target_name}<text of cross ref>
+
+Index entries are defined by
+
+  \X<word>
+  \X{mode=index_only}<text, special>
+
+The latter form creates an index entry which appears only in the index.
+The "word" from the the first form appears in the current text and in the index.
+
+B<Note:> The I<index_only> form is useful for example, if you want to have a word from a
+heading included in the index. The index tag is not allowed inside of a heading.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --bgcolor=color
+
+Set the background color for all HTML pages
+
+=item --bottom_template=filename
+
+=item --top_template=filename
+
+=item --bottom_idx_template=filename
+
+=item --top_idx_template=filename
+
+=item --bottom_toc_template=filename
+
+=item --top_toc_template=filename
+
+Filename for bottom template file (in HTML format) which is appended to
+each slide. Can be used to create footers with navigation, copyright note etc.
+The top template is inserted at the top of each slide.
+
+The _idx_ templates are used for the index slide and the _toc_ templates are used
+for the table of contents slide.
+
+The following keywords are substituted with corresponding values when the
+templates are included:
+
+  TITLE               text specified by --title option
+  URL_NEXT            hyperlink to next page
+  TXT_NEXT            header of next page
+  URL_PREV            hyperlink to previous page
+  TXT_PREV            header of previous page
+  URL_FIRST           hyperlink to first page
+  TXT_FIRST           header of first page
+  URL_LAST            hyperlink to last page
+  TXT_LAST            header of last page
+  URL_UP              hyperlink to upper page
+  TXT_UP              header of upper page
+  URL_DOWN            hyperlink to subsection page
+  TXT_DOWN            header of subsection page
+  URL_CONTENTS        hyperlink to contents page
+  TXT_CONTENTS        text specified by --contents_header
+  URL_INDEX           hyperlink to index page
+  TXT_INDEX           text specified by --index_header
+  PAGE_CNT            number of pages
+  PAGE                page or chapter number
+
+=item --boxtext_bold=ON
+
+=item --boxtext_bold=OFF
+
+Text in colored textboxes will be printed B<bold> or normal.
+
+=item --box_color=color
+
+=item --boxtext_color=color
+
+Set background and forground colors for block paragraphs
+
+=item --bullet=filename
+
+Filename of a GIF or JPEG image which is used for the bullets in bullet lists.
+
+=item --block_indent=m
+
+Indent each block by m levels (i. e. put m <UL> </UL> containers around the block
+This can be used to shift the block boxes to the right. Looks better if a
+block paragraph occurs within a bullet list.
+
+
+=item --center_headers
+
+Page Headers are centered. Default is no centering.
+
+=item --contents_header=text
+
+Heading for contents page. Deafult is I<Contents>
+
+=item --frame_set=filename
+
+filename for frame set template. This activates the frame set generation.
+
+=item --frame_start=filename
+
+filename of the startfile for the frame set. The frame_set template is copied to this
+file in the slide_dir directory.
+
+
+=item --index_bot=n
+
+=item --index_dat=n
+
+=item --index_top=n
+
+Indices of the bottom, top and index frames within the frameset.
+Used for java script navigation procedure.
+
+
+=item --index_header=text
+
+Heading for index page. Default is I<Index>
+
+=item --no_index
+
+Do not create an index
+
+=item --java_script_navigation=value
+
+value=1: on, value=0: off. If java_script_navigation is on and frame sets are generated then
+for each page a separate top and bottom page is created which is used in the top and bottom
+frames of the frame set. If java_script_navigation is off, then only one top template and one
+bottom template will be used for all pages. (In this case there should be no place holders
+for PAGE etc. in theses templates ...)
+
+=item --linear_mode
+
+This option influences the behaviour of PREV and NEXT links. In linear mode all
+pages form a linear sequence which can be traversed by means of the PREV and NEXT
+links. When this option is not set then the PREV and NEXT links work only on the same
+level. For example is it possible to traverse the sequence 2.1.1, 2.1.2, 2.1.3, 2.1.4
+with PREV and NEXT links but the first section has no PREV link and the last one has
+no NEXT link. In such a constellation the UP and DOWN links may be used to change
+the level and go the the next higher section or step down to a subsection.
+
+=item --num_headers
+
+All page headers are preceeded by the chapter number (e.g. 2.2.3) which is determined
+by the position of the page and the level of its header.
+
+=item --nav_template=filename
+
+Filename for a navigation template file which will be inlcuded at the top and bottom of
+each slide. This is useful for frame sets which use the TreeApplet because in this case the
+java script navigation should be disabled because the TreeApplet does not support this kind
+of URLs. Hence it might be a good idea to include navigation links at the top and bottom
+of each page.
+
+=item --slide_dir=directory
+
+Directory in which the HTML files are to be created.
+
+=item --slide_prefix=text
+
+Prefix for all HTML files. Default is "Slide".
+
+=item --slide_suffix=text
+
+Suffix for all HTML files. Default is "htm".
+
+=item --title=text
+
+Text which is substituted for the TITLE keyword in template files.
+
+=item --tree_applet
+
+Activate usage of TreeApplet
+
+=item --tree_app_width=m
+
+=item --tree_app_height=m
+
+Width and height of the tree applet area.
+
+=item --tree_base
+
+Codebase option for the tree applet. Default is ./
+
+=item --safe_opcodes
+
+Specify opcodes for the C<Safe> environment (see the Opcodes module documentation).
+Default is ":default"
+For the examples use in I<ppdoc.pp> you should use
+
+ --safe_opcodes=":filesys_open :still_to_be_decided :browse"
+
+
+=item --help
+
+Print this manual page
+
+=item --version
+
+Print version inforamtion and exit
+
+=back
+
+=head1 FILES
+
+Template files for header and footer section.
+
+Configuration file $HOME/.pp2html
+
+=head1 ENVIRONMENT
+
+=head1 NOTES
+
+The PerlPoint format was initially designed by Tom Christiansen.
+Tom used a simple syntax which was inspired by POD and
+a simple script which created HTML files from an ASCII file.
+
+=head1 SEE ALSO
+
+C<pp2latex>
+
+=head1 AUTHOR
+
+Jochen Stenzel (perl@jochen-stenzel.de), 
+Lorenz Domke (lorenz.domke@gmx.de),
+2000. All rights reserved.
+
+=cut
+
+
+# = HISTORY SECTION ========================================================
+
+# --------------------------------------------------------------------------
+# version | date   | author | changes
+# --------------------------------------------------------------------------
+# 0.02    |12.10.99| ste    | added a simple backend;
+# 0.01    |09.10.99| ste    | derived from the PP::Parser draft.
+# --------------------------------------------------------------------------
+
+$Log: pp2html,v $
+Revision 1.9  2000/12/10 22:48:37  lorenz
+check in for firest CPAN version
+
+Revision 1.8  2000/11/02 19:37:48  lorenz
+checkin for 0.006
+
+Revision 1.7  2000/10/04 21:51:16  lorenz
+checkin for 0.004
+
+Revision 1.6  2000/08/04 19:56:51  lorenz
+check
+
+Revision 1.5  2000/08/04 17:41:25  lorenz
+first submission
+
+Revision 1.2  2000/07/27 23:15:56  lorenz
+first version with reasonable functionality
+
+Revision 1.1  2000/04/27 21:28:36  lorenz
+Initial revision
+
+

@@ -1,0 +1,142 @@
+This is the README file for PerlPoint-Converters
+
+$Id: README,v 1.6 2000/12/10 22:48:37 lorenz Exp lorenz $
+
+Covered topics:
+
+o  Prerequisits
+o  What's new
+o  Installation
+o  Test Cases
+o  Bug Reports
+o  Credits
+o  Licence
+
+
+Prerequisits
+------------
+This version needs Perl5.6.0
+The pp2html program uses the following packages which are available on CPAN:
+
+  Pod::Text
+  Getopt::Long
+  Getopt::ArgvFile
+  PerlPoint::Parser 0.20
+  PerlPoint::Backend
+  PerlPoint::Constants
+  
+The TreeApplet classes are contained in the images subdirectory of this
+distribution. For more information about the TreeApplet classes refer to
+http://www.mcsoftware.com.au/java/TreeControl/treeControl.html
+
+
+What's new in this version
+--------------------------
+This is version 0.007
+
+Please refer to file "Changes"
+
+
+Installation
+------------
+Just get the PerlPoint-Converters-<release>.tar.gz file and unpack it in a temp directory:
+
+  tar zxvf PerlPoint-Converters-<release>.tar.gz 
+  cd PerlPoint-Converters-<release>
+  perl Makefile.PL
+  make
+  make test
+  make install
+
+  NOTE: make install does perhaps not what you expect it to do!
+        It may be more advisable to install the scripts `pp2html' and `pp2latex'
+        by hand into a directory in your $PATH.
+
+The main script is `pp2html'. Try `pp2html --help | less' to get more information.
+A test script `test.pl' is provided which runs the input file `ppdoc.pp'
+four times through `pp2html' using four different configuration files.
+The resulting HTML files are places in the `ex_*' subdirectories. These
+test files contain some documentation for `pp2html'.
+
+This script is also called for `make test'.
+
+Test Cases
+----------
+The following examples/test cases are provided:
+  ex_std_norm/     Standard HTML pages with no TreeApplet
+  ex_std_tree/     Standard HTML pages with TreeApplet support
+  ex_frm_norm/     Frame set with no TreeApplet
+  ex_frm_tree/     Frame set with TreeApplet support
+
+Issue the `make test' command to create the test samples.
+Look at the results by opening the following files in your web browser
+(Javascript must be enabled to look at the *tree* examples):
+
+  ex_std_norm/page0000.htm
+  ex_std_tree/page0000.htm
+  ex_frm_norm/frame_set.html
+  ex_frm_tree/frame_set.html
+
+Bug Reports
+-----------
+Please send bug reports and requests to <lorenz.domke@gmx.de>
+
+Lorenz Domke
+
+
+Credits
+-------
+Thanks to Tom Christiansen for the idea and first implementation
+of PerlPoint! And special thanks for his permission to use this
+name for our new implementation.
+
+Thanks to Jochen Stenzel who tested the first versions of pp2html
+and supplied the powerful PerlPoint-Package which is the base of
+this new implementation of pp2html.
+
+Thanks to Stephen Riehm who shared his ideas of extensions for
+the original software with us. The final language was basically
+designed by a team of Jochen, him and me.
+
+Thanks to Alex Sigel and Norbert Gruener who became our first
+testers outside the team and helped us by their usage reports.
+Special thanks to Alex for propagating the toolkit and his help
+to publish the software!
+
+
+Licence
+-------
+This module is free software, you can redistribute it and/or modify it
+under the terms of the Artistic License distributed with Perl version
+5.003 or (at your option) any later version. Please refer to the
+Artistic License that came with your Perl distribution for more
+details.
+
+The Artistic License should have been included in your distribution of
+Perl. It resides in the file named "Artistic" at the top-level of the
+Perl source tree (where Perl was downloaded/unpacked - ask your
+system administrator if you dont know where this is).  Alternatively,
+the current version of the Artistic License distributed with Perl can
+be viewed on-line on the World-Wide Web (WWW) from the following URL:
+http://www.perl.com/perl/misc/Artistic.html
+
+DISCLAIMER
+
+This software is distributed in the hope that it will be useful, but
+is provided "AS IS" WITHOUT WARRANTY OF ANY KIND, either expressed or
+implied, INCLUDING, without limitation, the implied warranties of
+MERCHANTABILITY and FITNESS FOR A PARTICULAR PURPOSE.
+
+The ENTIRE RISK as to the quality and performance of the software
+IS WITH YOU (the holder of the software).  Should the software prove
+defective, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR
+CORRECTION.
+
+IN NO EVENT WILL ANY COPYRIGHT HOLDER OR ANY OTHER PARTY WHO MAY CREATE,
+MODIFY, OR DISTRIBUTE THE SOFTWARE BE LIABLE OR RESPONSIBLE TO YOU OR TO
+ANY OTHER ENTITY FOR ANY KIND OF DAMAGES (no matter how awful - not even
+if they arise from known or unknown flaws in the software).
+
+Please refer to the Artistic License that came with your Perl
+distribution for more details.
+
