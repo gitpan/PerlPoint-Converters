@@ -1,11 +1,11 @@
 <!-- ---- Top Navigation Bar ------------------------------------- BEGIN 
-  $Id: ex_std_norm-top.tpl,v 1.6 2001/03/11 11:55:11 lorenz Exp $
+  $Id: ex_std_norm-top.tpl,v 1.7 2001/06/15 15:56:02 lorenz Exp $
 -------------------------------------------------------------------- -->
 <!--
   *** This text is included just below the BODY line in all HTML pages
-  $Id: ex_std_norm-top.tpl,v 1.6 2001/03/11 11:55:11 lorenz Exp $
-  $Revision: 1.6 $
-  $Date: 2001/03/11 11:55:11 $
+  $Id: ex_std_norm-top.tpl,v 1.7 2001/06/15 15:56:02 lorenz Exp $
+  $Revision: 1.7 $
+  $Date: 2001/06/15 15:56:02 $
 -->
 <FONT SIZE=+6>
 
@@ -20,7 +20,10 @@
      </B></FONT>
   </TD>
   <TD align=right WIDTH=20% bgcolor="#FFFF99">
-     PAGE
+     <FONT color=black>
+     PAGE <BR>
+     Author: VAR(AUTHOR)
+     </FONT>
   </TD>
 </TR>
 </TABLE>

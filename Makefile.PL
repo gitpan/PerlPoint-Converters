@@ -7,9 +7,9 @@ require 5.005;
 
 $ok=WriteMakefile(
     'NAME'	=> 'PerlPoint-Converters',
-    'VERSION' => '0.009',
+    'VERSION' => '0.10',
      PREREQ_PM     => {
-                         PerlPoint::Parser => 0.32,
+                         PerlPoint::Parser => 0.34,
                          Getopt::ArgvFile => 1.01,
                       },
     dist           => {
@@ -19,7 +19,7 @@ $ok=WriteMakefile(
     EXE_FILES      => [
                          "pp2html", "pp2latex"
                       ],
-   clean => {FILES => "ex_std_norm ex_std_tree ex_frm_norm ex_frm_tree t/slide*.htm"},
+   clean => {FILES => "orange_slides big_blue pp_book ex_std_norm ex_std_tree ex_frm_norm ex_frm_tree t/slide*.htm .*.ppcache"},
 );
 
 

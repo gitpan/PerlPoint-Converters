@@ -1,5 +1,42 @@
 Revision history for PerlPoint-Converters.
 
+Version 0.10   06/16/2001
+-  Nested tags bug fixed: it was not possible to use \I, \C inside 
+   a link \L tag.
+   NOTE: It is still not posslble to have an \X tag in the body of
+         a \L tag!
+-  Require PerlPoint::Parser 0.3427
+-  Using new tag definition Module: PerlPoint::Tags::HTML, PerlPoint::Tags::LaTeX
+-  Comment with version numbers in each created file
+-  Bugfix: \C, \I, \B, ... etc in headers was not correctly handled in former versions
+-  --box_border option (for border width of text boxes)
+-  --style_sheet option (still as an experiment; the behaviour of pp2html may change
+   when style sheets are used)
+-  die when wrong options have been specified
+-  workaround for bug in TreeApplet: / was not possible in headers.
+   now slashes are replaced with commas.
+-  Empty fields in tables are now filled with "&nbsp;" so that the border will be
+   displayed
+-  --style_dir and --style options
+   Support for styles (pre-defined sets of template and configuration files)
+-  Bug with list indentation fixed: if the last item in a list is shifted (i.e.
+   shift_level > 1) then the following text or block was indented. Now the
+   shift_level is automatically reduced.
+-  Some new Keywords which are replaced when templates are copied to the
+   target directory: TOP_LEFT_TXT, TOP_MIDDLE_TXT, TOP_RIGHT_TXT,
+   same for BASE, and LOGO_IMAGE_FILENAME;
+   corresponding options: --top_left_txt, ...
+-  Option --slide_md5: all filenames have the form 
+    <slide_prefix><md5-checksum>.<slide_suffix>
+-  Nested tables are now supported (see PerlPoint::Parser Docu)
+-  Variables can now be used in template Files, see the ex_std_norm-top.tpl for an
+   example: VAR(AUTHOR)
+-  support of hierarchical anchor names for slide headers
+-  pp2latex: fix for formatting of URLs included (thanks to Alex Sigel)
+
+
+
+
 Version 0.009   03/04/2001
 -  require PerlPoint::Parser 0.32
 -  new parameters --box_width and --filters for pp2html

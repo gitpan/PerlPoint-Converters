@@ -1,15 +1,17 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2latex,v 1.9 2001/03/11 11:55:11 lorenz Exp lorenz $
-# $Revision: 1.9 $
-# $Date: 2001/03/11 11:55:11 $
+# $Id: pp2latex,v 1.11 2001/06/15 15:56:02 lorenz Exp lorenz $
+# $Revision: 1.11 $
+# $Date: 2001/06/15 15:56:02 $
 #
 # $Author: lorenz $
 #
 # Revision History: See end of file
 #===================================================================
 
-use lib "$ENV{'HOME'}/lib/perl5";
+# declare script package
+package PerlPoint::Converter::pp2latex;
+
 use Pod::Text;
 use Getopt::ArgvFile qw(argvFile);
 use Getopt::Long;
@@ -21,16 +23,20 @@ use strict;
 use subs "flush", "push_page", "pp_warn";
 
 # load modules
+use File::Basename;
 use Carp;
 use Safe;
+use PerlPoint::Tags::HTML;
+use PerlPoint::Tags::LaTeX;
 use PerlPoint::Backend;
-use PerlPoint::Parser 0.29;
+use PerlPoint::Parser 0.34;
 use PerlPoint::Constants;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.9 $/ =~ /(\d+)\.(\d+)/);
-my $PACK_VERSION = "0.009";
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.11 $/ =~ /(\d+)\.(\d+)/);
+my $PACK_VERSION = "0.10";
+$main::VERSION = $VERSION;
 
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
@@ -74,7 +80,6 @@ my $verbose = 1;
 GetOptions( \%OPT,
 
   "activeContents",
-  "allTags",
   "cache",
   "cacheCleanup",
   "filter=s",
@@ -101,8 +106,8 @@ $OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDE
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
 print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT{quiet};
-print STDERR "$Date: 2001/03/11 11:55:11 $nix\n" unless $OPT{quiet};
-print STDERR "(c) Lorenz Domke <lorenz.domke\@mgx.de> 2001.\n\n" unless $OPT{nocopyright};
+print STDERR "$Date: 2001/06/15 15:56:02 $nix\n" unless $OPT{quiet};
+print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT{nocopyright};
 exit if $OPT{version};
 
 
@@ -117,7 +122,7 @@ $li_end = "\n";
 # 000000000000000
 my $embedded_latex = 0;
 
-my (@streamData, %tagHash);
+my (@streamData);
 my $verbatim_flag = 0;
 
 my $page_ref;  # pointer to current page buffer
@@ -142,34 +147,6 @@ my $idx_cnt = 0;
 
 # declare list of tag openers
 # some are only needed for compatibility with pp2htm
-@tagHash{qw(
-            BOXCOLORS
-            BOXCOLOR
-            BOXTEXT
-            IMAGE
-            MBOX
-            A
-            L
-            PAGEREF
-            SECTIONREF
-            XREF
-            B
-            C
-            I
-            HR
-            U
-            PRINT_TOC
-            SUB
-            SUP
-            E
-            F
-            X
-            LINE_BREAK
-            BR
-           )
-         }=();
-
-$tagHash{'\ACCEPT_ALL'}=1 if exists $OPT{allTags};
 
 # build parser
 my ($parser)=new PerlPoint::Parser;
@@ -177,12 +154,19 @@ my ($parser)=new PerlPoint::Parser;
 
 # build and configure a Safe object
 my $safe = new Safe;
-$safe->permit(@{$OPT{safeOpcode}}) if exists $OPT{safeOpcode};
+if (exists $OPT{safeOpcode}){
+  unless (grep($_ eq 'ALL', @{$OPT{safeOpcode}})) {
+     # configure compartment
+     $safe->permit(@{$OPT{safeOpcode}});
+  } else {
+     # simply flag that we want to execute active contents
+     $safe=1;
+  }
+}
 
 # and call it
 $parser->run(
              stream  => \@streamData,
-             tags    => \%tagHash,
              files   => \@ARGV,
              safe    => exists $OPT{activeContents} ? $safe : undef,
              filter  => exists $OPT{filter} ? $OPT{filter} : "perl|latex",
@@ -191,6 +175,12 @@ $parser->run(
                                 userSettings   => {map {$_=>1} exists $OPT{set} ? @{$OPT{set}} : ()},
                                },
              vispro  => 1,
+             nestedTables => 1,
+             var2stream   => 1,
+             predeclaredVars => {
+                                 CONVERTER_NAME    => basename($0),
+                                 CONVERTER_VERSION => $main::VERSION,
+                                },
              trace   => TRACE_NOTHING
                       + ((exists $OPT{trace} and $OPT{trace} &  1) ? TRACE_PARAGRAPHS : 0) 
                       + ((exists $OPT{trace} and $OPT{trace} &  2) ? TRACE_LEXER      : 0)
@@ -322,12 +312,20 @@ sub begin_doc{
 
 \begin{document}
 
+\begin{flushleft}
+
 EOT
   }
 } # begin_doc
 
+# flushleft ist fix alex
+
 #----------------------------------------------------------
 sub end_doc{
+
+# fix alex
+print "\n\n\\end{flushleft}\n";
+
 print "\n\n\\end{document}\n";
 } # end_doc
 
@@ -733,10 +731,37 @@ sub handleTag {
       if ( !defined $_[3]->{'url'}) {
         warn "*** ERROR: Hyperlink \L without 'url' parameter\n";
       }
-      my $link_text = join("",@BUFFER);
-#     my $url = $_[3]->{'url'};
-      push_page $page_ref, "\\textit{$link_text}";
-      @BUFFER=();
+      # my $link_text = join("",@BUFFER);
+
+# fix alex!! 2001-04-17
+
+      my $url = $_[3]->{'url'};
+
+      # print "\n", Dumper($url), "\n";
+
+      my $offset = 80; # 80 Zeichen breite URLs, dann Zeilenumbruch
+
+      sub format_url {
+        my ($url, $offset) = @_;
+        my $breaksign = " \\linebreak ";
+        my $newurl = "";
+        while (length($url) > $offset) {
+          $newurl .= substr($url, 0, $offset) . $breaksign;
+          substr($url, 0, $offset) = '';
+        }
+        return $newurl . $url;
+      } # format_url
+
+
+      push_page $page_ref, 
+                           # "\\begin{flushright}",
+                           "{\\scriptsize \\begin{math} [URL: ",
+                           format_url(escapes($url), $offset),
+                           "] \\end{math} } ";
+                           # "\\end{flushright} ";
+
+      # @BUFFER=();
+
     } else {
       flush;
     }
@@ -959,7 +984,7 @@ B<pp2latex> - PerlPoint to LaTeX converter
 
 =head1 VERSION
 
-This manual describes version B<0.009, build 1.09>.
+This manual describes version B<0.10, build 1.11>.
 
 =head1 SYNOPSIS
 
@@ -1000,13 +1025,6 @@ C<\documentclass> and C<\begin{document}> must be defined there.
 PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
 reasons of security this feature is deactivated by default. Set this option to active
 it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
-
-=item --allTags
-
-C<pp2html> implements the PerlPoint tags I<B>, I<C>, I<E>, I<I> and I<IMAGE>. Because every
-PerlPoint translator can define its own tags it may happen that a source file containes
-more than these. If they do not pass translation try this option which makes I<all> tags
-accepted. I<This is still an experimental feature.>
 
 =item --cache
 
@@ -1140,6 +1158,12 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 # --------------------------------------------------------------------------
 
 $Log: pp2latex,v $
+Revision 1.11  2001/06/15 15:56:02  lorenz
+ci for Release 0.10 (final)
+
+Revision 1.10  2001/06/14 12:00:56  lorenz
+checkin for version 0.10_05
+
 Revision 1.9  2001/03/11 11:55:11  lorenz
 checkin for version 0.009
 

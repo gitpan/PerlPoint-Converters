@@ -1,15 +1,17 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2html,v 1.13 2001/03/11 11:55:11 lorenz Exp $
-# $Revision: 1.13 $
-# $Date: 2001/03/11 11:55:11 $
+# $Id: pp2html,v 1.21 2001/06/16 12:37:08 lorenz Exp $
+# $Revision: 1.21 $
+# $Date: 2001/06/16 12:37:08 $
 #
 # $Author: lorenz $
 #
 # Revision History: See end of file
 #===================================================================
 
-#use lib "$ENV{'HOME'}/lib/perl5";
+# declare script package
+package PerlPoint::Converter::pp2html;
+
 use Pod::Text;
 use Getopt::ArgvFile qw(argvFile);
 use Getopt::Long;
@@ -20,18 +22,26 @@ use Cwd;
 use strict;
 use subs "flush", "push_page", "pp_warn";
 
+
 # load modules
 use Carp;
+use Digest::MD5 qw(md5_hex);     # ste
 use File::Basename;
+use File::Copy;
 use Safe;
+
+use PerlPoint::Constants 0.14;
+use PerlPoint::Tags::Basic;
+use PerlPoint::Tags::HTML;
+use PerlPoint::Tags::LaTeX;
 use PerlPoint::Backend;
-use PerlPoint::Parser 0.29;
-use PerlPoint::Constants;
+use PerlPoint::Parser 0.34;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.13 $/ =~ /(\d+)\.(\d+)/);
-my $PACK_VERSION = "0.009";
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.21 $/ =~ /(\d+)\.(\d+)/);
+my $PACK_VERSION = "0.10";
+$main::VERSION = $VERSION;
 
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
@@ -86,6 +96,7 @@ my %OPT = (
   bot_alinkcolor      => "#FF0000",
   toc_alinkcolor      => "#FF0000",
   idx_alinkcolor      => "#FF0000",
+  contents_target => "Index",
   bgcolor         => "#FFFFFF",
   idx_bgcolor     => "#FFFFFF",
   idx_fgcolor     => "#000000",
@@ -123,6 +134,7 @@ my %OPT = (
   no_index        => 0,
   num_headers     => 0,
   slide_dir       => ".",
+  style_dir      => ["."],
   slide_prefix    => "slide",
   slide_suffix    => "htm",
   title           => "XXXXX",
@@ -131,14 +143,21 @@ my %OPT = (
   tree_app_height => 500,
   tree_app_width  => 250,
   tree_applet     => 0,
-  tree_base       => "./",
   vlinkcolor      => "#AAAAAA",
   top_vlinkcolor      => "#AAAAAA",
   bot_vlinkcolor      => "#AAAAAA",
   toc_vlinkcolor      => "#AAAAAA",
   idx_vlinkcolor      => "#AAAAAA",
+  base_left_txt       => "BASE_LEFT_TXT",
+  base_right_txt       => "BASE_RIGHT_TXT",
+  base_middle_txt      => "BASE_MIDDLE_TXT",
+  top_left_txt         => "TOP_LEFT_TXT",
+  top_right_txt        => "TOP_RIGHT_TXT",
+  top_middle_txt       => "TOP_MIDDLE_TXT",
+  logo_image_filename  => "LOGO_IMAGE_FILENAME",
 
-);
+
+); ## END DEFAULTS
 
 argvFile( home => 1, default => 1);
 
@@ -147,37 +166,40 @@ if (defined $ARGV[0] and $ARGV[0] =~ /-v$/){
 }
 my $verbose = 1;
 
-GetOptions( \%OPT,
+## NOTE: The comments in the GetOptions parameter list are used for
+##       creating the menues in the interactive config file editor
+##       (which will soon be available :-)
+
+my @OPTIONS = (
+  ## ------------------------- General
 
   "activeContents",
-  "alinkcolor=s", 
-  "top_alinkcolor=s", 
-  "bot_alinkcolor=s", 
-  "toc_alinkcolor=s", 
-  "idx_alinkcolor=s", 
-  "allTags",
+  "cache",
+  "cacheCleanup",
+  "safeOpcode=s@",
+  "set=s@",
+
+  "trans_table=s",
+
+  "filter=s",
+  "nocopyright",
+  "noinfo",
+  "nowarn",
+  "quiet",
+  "count_only",
+
+  ## ------------------------- Colors
+
   "bgcolor=s",
   "back_image=s",
   "toc_back_image=s",
   "idx_back_image=s",
   "top_back_image=s",
   "bot_back_image=s",
-  "block_indent=i",
-  "bottom_idx_template=s",
-  "bottom_template=s",
-  "bottom_toc_template=s",
+
   "box_color=s",
-  "box_width=s",
-  "boxtext_bold=s",
   "boxtext_color=s",
-  "bullet=s@",
-  "cache",
-  "no_contents_indent",
-  "no_contents_bullets",
-  "cacheCleanup",
-  "center_headers",
-  "contents_header=s",
-  "debug",
+
   "fgcolor=s",
   "idx_fgcolor=s",
   "idx_bgcolor=s",
@@ -187,53 +209,138 @@ GetOptions( \%OPT,
   "top_fgcolor=s",
   "bot_bgcolor=s",
   "bot_fgcolor=s",
-  "filter=s",
-  "frame_set=s",
-  "frame_start=s",
-  "help",
-  "index_bot=s",
-  "index_dat=s",
-  "index_header=s",
-  "index_top=s",
-  "java_script_navigation=s",
-  "linear_mode",
+
+  ## ------------------------- Link Colors
+
   "linkcolor=s",
   "top_linkcolor=s",
   "bot_linkcolor=s",
   "toc_linkcolor=s",
   "idx_linkcolor=s",
-  "nav_template=s",
-  "nav_top_template=s",
-  "nav_bottom_template=s",
-  "no_index",
-  "nocopyright",
-  "noinfo",
-  "nowarn",
-  "num_headers",
-  "quiet",
-  "safeOpcode=s@",
-  "set=s@",
-  "slide_dir=s",
-  "slide_prefix=s",
-  "slide_suffix=s",
-  "title=s",
-  "top_idx_template=s",
-  "top_template=s",
-  "top_toc_template=s",
-  "trace:i",
-  "trans_table=s",
-  "tree_app_height=s",
-  "tree_app_width=s",
-  "tree_applet",
-  "tree_base=s",
-  "version",
+
   "vlinkcolor=s",
   "top_vlinkcolor=s",
   "bot_vlinkcolor=s",
   "toc_vlinkcolor=s",
   "idx_vlinkcolor=s",
 
-);
+  "alinkcolor=s", 
+  "top_alinkcolor=s", 
+  "bot_alinkcolor=s", 
+  "toc_alinkcolor=s", 
+  "idx_alinkcolor=s", 
+
+  ## ------------------------- Templates
+
+  "top_idx_template=s",
+  "top_template=s",
+  "top_toc_template=s",
+
+  "bottom_idx_template=s",
+  "bottom_template=s",
+  "bottom_toc_template=s",
+
+  "nav_template=s",
+  "nav_top_template=s",
+  "nav_bottom_template=s",
+
+  ## ------------------------- Layout
+
+  "title=s",
+  "contents_header=s",
+  "index_header=s",
+
+  "style=s",
+  "style_dir=s@",
+
+
+  "bullet=s@",
+
+  "box_border=s",
+  "box_width=s",
+  "boxtext_bold=s",
+
+  "contents_target=s",
+  "no_contents_indent",
+  "no_contents_bullets",
+
+  "block_indent=i",
+
+  "no_index",
+  "linear_mode",
+  "num_headers",
+  "center_headers",
+
+  "style_sheet=s",
+
+  "base_left_txt=s",
+  "base_right_txt=s",
+  "base_middle_txt=s",
+  "top_left_txt=s",
+  "top_right_txt=s",
+  "top_middle_txt=s",
+  "logo_image_filename=s",
+
+  ## ------------------------- Directories
+
+  "frame_set=s",
+  "frame_start=s",
+
+  "slide_dir=s",
+  "target_dir=s",
+  "slide_prefix=s",
+  "slide_suffix=s",
+
+  "image_dir=s",
+  "image_ref=s",
+  "applet_dir=s",
+  "applet_ref=s",
+
+  "slide_md5",
+
+  "index_bot=s",
+  "index_dat=s",
+  "index_top=s",
+
+
+  ## ------------------------ Tree Applet
+
+  "tree_applet",
+  "tree_app_height=s",
+  "tree_app_width=s",
+  "tree_base=s",
+
+  "java_script_navigation=s",
+
+  ## ------------------------ Special
+
+  "debug",
+  "trace:i",
+  "help",
+  "version",
+
+); ##----------- END OPTIONS
+
+die unless GetOptions( \%OPT,
+   @OPTIONS
+   );
+
+
+# build and configure a Safe object
+my $safe = new Safe;
+if (exists $OPT{safeOpcode}){
+  unless (grep($_ eq 'ALL', @{$OPT{safeOpcode}})) {
+     # configure compartment
+     $safe->permit(@{$OPT{safeOpcode}});
+  } else {
+     # simply flag that we want to execute active contents
+     $safe=1;
+  }
+}
+
+delete $OPT{safeOpcode}; # der Mohr hat seine Schuldigkeit getan!
+# if we do not delete this option we will get warnings in the
+# subsequent call to GetOptions ...
 
 # propagate options as necessary
 @OPT{qw(nocopyright noinfo nowarn)}=(1,1,1) if exists $OPT{quiet};
@@ -242,21 +349,142 @@ $OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDE
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
 print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT{quiet};
-print STDERR "$Date: 2001/03/11 11:55:11 $nix\n" unless $OPT{quiet};
-print STDERR "(c) Lorenz Domke <lorenz.domke\@mgx.de> 2001.\n\n" unless $OPT{nocopyright};
+print STDERR "$Date: 2001/06/16 12:37:08 $nix\n" unless $OPT{quiet};
+print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT{nocopyright};
 exit if $OPT{version};
 
 $verbose = 0 if ($OPT{quiet} or $OPT{noinfo});
 
 # check slide dir and create it if necessary:
+
+if ($OPT{target_dir}) {
+  $OPT{slide_dir} = $OPT{target_dir};
+}
 if (! -d $OPT{slide_dir}) {
   print STDERR "creating slide dir $OPT{slide_dir} ...\n" if $verbose;
   mkdir $OPT{slide_dir}, oct(755) or die "Cannot creating $OPT{slide_dir}: $!\n";
 }
 
+$OPT{image_dir} = $OPT{slide_dir} unless defined $OPT{image_dir};
+if(! defined $OPT{image_ref}){
+  if ($OPT{image_dir} eq $OPT{slide_dir}){
+    $OPT{image_ref} = ".";  # images are in the slides dir
+  } else {
+    if ( $OPT{image_dir} =~ m#^/#){
+      $OPT{image_ref} = $OPT{image_dir}; # absolute path name
+    } else {
+      $OPT{image_ref} = $OPT{image_dir};
+      #### potential ERROR
+### TODO
+### we must figure out, where the image_dir is relative to the slide_dir !!!
+    }
+  }
+}
+
+$OPT{applet_dir} = $OPT{slide_dir}  unless defined $OPT{applet_dir};
+if(! defined $OPT{applet_ref}){
+  if ($OPT{applet_dir} eq $OPT{slide_dir}){
+    $OPT{applet_ref} = ".";  # applets are in the slides dir
+  } else {
+    if ( $OPT{applet_dir} =~ m#^/#){
+      $OPT{applet_ref} = $OPT{applet_dir}; # absolute path name
+    } else {
+      $OPT{applet_ref} = $OPT{applet_dir};
+      #### potential ERROR
+### TODO
+### we must figure out, where the applet_dir is relative to the slide_dir !!!
+    }
+  }
+}
+
+my $style_dir = ".";
+## handle style options; in this case we must load additional
+## options files ...
+if (defined $OPT{style}){
+  # try to find the style directory
+  my $style = $OPT{style};
+  my $found = 0;
+  foreach my $mstyle_dir (@{$OPT{style_dir}}) {
+    if (-e "$mstyle_dir/$style/$style.cfg"){
+      $style_dir = $mstyle_dir;
+      $found = 1;
+      last;
+    }
+  }
+  if (! $found){
+    die "*** ERROR: style directory $style not found ...\n";
+  }
+
+  # load the options file from the style directory:
+  my $style_opts = "$style_dir/$style/$style.cfg";
+  if (! -e $style_opts) {
+    die "*** ERROR: cannot find options file $style_opts !\n";
+  }
+  { local @ARGV = ( "\@$style_opts" );
+     argvFile();
+     die unless GetOptions( \%OPT,
+       @OPTIONS
+     );
+  }
+  $style_dir = "$style_dir/$style";  ## used as prefix for all template files !!
+
+  # now copy all images from the style dir to target_dir (slide_dir):
+  opendir(STYLE, "$style_dir") or die "Can't open directory $style_dir: $!\n";
+  foreach my $img (readdir(STYLE)){
+    if ($img =~ /\.jpg$|\.gif$|\.png$/i) {
+      update_file("$style_dir/$img",  "$OPT{image_dir}/$img");
+    }
+    if ($img =~ /\.htm$|\.html$|\.css$/i) {
+      update_file("$style_dir/$img",  "$OPT{slide_dir}/$img");
+    }
+  }
+  closedir(STYLE);
+} # end --style option
+
+if ($OPT{tree_applet}){              #--------------------- TreeApplet
+  # now update tree applet files in target directory
+
+  # first find tree applet sources
+  # There MUST be a subdirectoy called "applet_src" in one of the style directories
+  my $applet_source_dir;
+  foreach my $mstyle_dir (@{$OPT{style_dir}}) {
+    if (-d "$mstyle_dir/applet_src"){
+      $applet_source_dir = "$mstyle_dir/applet_src";
+      last;
+    }
+  }
+
+  # now update:
+  if (! defined $applet_source_dir){
+    die "*** ERROR: TreeApplet source directory not found!\n" .
+        "    Perhaps you have not specified a --style_dir option.\n" .
+        "    This is now mandatory if you use the tree applet.\n" .
+        "    There must be directory called 'applet_src' in one of your\n" .
+        "    style collections (i. e. one of the directories which are \n" .
+        "    specified with the --style_dir option).\n"
+    ;
+  }
+  opendir(TR, $applet_source_dir) or die "cannot open $applet_source_dir:$!\n";
+  foreach my $f (readdir(TR)){
+    next unless $f =~ /\.class$/;
+    update_file("$applet_source_dir/$f", "$OPT{applet_dir}/$f");
+  }
+
+  # fix the tree_base
+  if (! defined $OPT{tree_base}){
+    $OPT{tree_base} = $OPT{applet_ref};
+  }
+
+} # tree_applet
+
+
 my $block_width = "";  # width for code block tables
 if(exists $OPT{box_width}){
   $block_width = " WIDTH=$OPT{box_width}";
+}
+my $box_border = "";
+if(exists $OPT{box_border}){
+  $box_border = " BORDER=$OPT{box_border}";
 }
 
 my $LIST;
@@ -265,6 +493,7 @@ my ($lo_start, $lo_end) = ($li_start, $li_end);
 my $pwd = cwd;
 
 my $shift_level = 0;
+my $missing_bullets_cnt = 0;
 foreach my $bull (@{$OPT{bullet}}) {
   $shift_level++;
   if ($bull !~ /^<LI/i){
@@ -274,12 +503,20 @@ foreach my $bull (@{$OPT{bullet}}) {
     # or absolute (in UNIX or other OS conventions ...)
     $bull =~ s/"//g; # remove "
     {
-      chdir $OPT{slide_dir} or die "cannot cd back to slide directory $OPT{slide_dir}: $!\n";
+      if ($OPT{style}){
+        # images for bullets must be specified relative to the style directory
+        chdir $style_dir or die "cannot cd to slide directory $style_dir: $!\n";
+      }
       if (! -e $bull){
         $BULLETS[$shift_level] = "<LI>";
         pp_warn "Image file for bullet not found: $bull ...\n";
+        $missing_bullets_cnt ++;
       } else {
-        $BULLETS[$shift_level] = $bull;
+        ## copy bullet image to target dir
+        my $bull_basename = $bull;
+        $bull_basename =~ s#.*/##;
+        update_file($bull,"$OPT{image_dir}/$bull_basename"); 
+        $BULLETS[$shift_level] = $bull_basename;
       }
       chdir $pwd or die "cannot cd back to working directory $pwd: $!\n";
     }
@@ -291,6 +528,7 @@ $shift_level = 1;
 #print STDERR "@BULLETS\n";
 
 # check for existence of back images:
+my $missing_backgrounds_cnt = 0;
 if ($OPT{back_image} or
     $OPT{toc_back_image} or
     $OPT{idx_back_image} or
@@ -300,22 +538,27 @@ if ($OPT{back_image} or
     chdir $OPT{slide_dir} or die "cannot cd back to slide directory $OPT{slide_dir}: $!\n";
     if ($OPT{back_image}  and  ! -e "$OPT{back_image}"){
       pp_warn "Image file for slide background: $OPT{back_image} ...\n";
+      $missing_backgrounds_cnt ++;
       $OPT{back_image} = "";
     }
     if ($OPT{toc_back_image}  and  ! -e "$OPT{toc_back_image}"){
       pp_warn "Image file for toc background: $OPT{toc_back_image} ...\n";
+      $missing_backgrounds_cnt ++;
       $OPT{toc_back_image} = "";
     }
     if ($OPT{idx_back_image}  and  ! -e "$OPT{idx_back_image}"){
       pp_warn "Image file for index background: $OPT{idx_back_image} ...\n";
+      $missing_backgrounds_cnt ++;
       $OPT{idx_back_image} = "";
     }
     if ($OPT{top_back_image}  and  ! -e "$OPT{top_back_image}"){
       pp_warn "Image file for top background: $OPT{top_back_image} ...\n";
+      $missing_backgrounds_cnt ++;
       $OPT{top_back_image} = "";
     }
     if ($OPT{bot_back_image}  and  ! -e "$OPT{bot_back_image}"){
       pp_warn "Image file for bottom background: $OPT{bot_back_image} ...\n";
+      $missing_backgrounds_cnt ++;
       $OPT{bot_back_image} = "";
     }
     chdir $pwd or die "cannot cd back to working directory $pwd: $!\n";
@@ -374,9 +617,9 @@ if (defined($OPT{block_indent})){
 
 if ($OPT{frame_set} ne "") {
   print "Creating frame set ...\n";
-  my $fset = $OPT{frame_set};
+  my $fset = "$style_dir/$OPT{frame_set}";
   if (! -e $fset or -d $fset) {
-    die "*** error: frame set template $fset does not exist or is a directory!\n";
+    die "*** ERROR: frame set template $fset does not exist or is a directory!\n";
   }
   copy_file($fset, "$OPT{slide_dir}/$OPT{frame_start}");
 }
@@ -386,7 +629,7 @@ my $embedded_html = 0;
 # declare variables
 # Data Structures
 # 000000000000000
-my (@streamData, %tagHash);
+my (@streamData, %variables);    # ste: added %variables
 
 my $page_ref;  # pointer to current page buffer
 
@@ -406,6 +649,7 @@ my @PAGES;     # Array of pointers to PAGE structures
 #                    LAST => ...,
 #                 }
 my $page_cnt = 0;
+my $imge_cnt = 0;
 my $idx_page_cnt = 1;
 $PAGES[0] -> {HD} = $OPT{contents_header};
 $PAGES[0] -> {FILENAME} = "$OPT{slide_prefix}0000.$OPT{slide_suffix}";
@@ -428,58 +672,27 @@ my ($f0, $f1, $f2) =
 
 
 my %ANCHOR;  # $ANCHOR{a_name} = $page_cnt
+my @HEADLINE_PATH; # ste: headline path parts (first element unused!)
 
 my %INDEX;   # index entries
 my %IDX_;    # index entries available
 my $idx_cnt = 0;
 my ($center_1, $center_2) = ("","");
 my $table_hl_bgcolor="";
+my $td_was_empty = 0;  # set to 1 if an empty table entry is detected
 
 if ($OPT{center_headers}){
   $center_1 = "<center>";
   $center_2 = "</center>";
 }
 
-
-# declare list of tag openers
-@tagHash{qw(
-            BOXCOLOR
-            BOXCOLORS
-            BOXTEXT
-            IMAGE
-            A
-            B
-            I
-            C
-            SUP
-            SUB
-            MBOX
-            U
-            L
-            PAGEREF
-            SECTIONREF
-            XREF
-            HR
-            E
-            F
-            X
-            LINE_BREAK
-            BR
-           )
-         }=();
-$tagHash{'\ACCEPT_ALL'}=1 if exists $OPT{allTags};
-
 # build parser
 my ($parser)=new PerlPoint::Parser;
 
-# build and configure a Safe object
-my $safe = new Safe;
-$safe->permit(@{$OPT{safeOpcode}}) if exists $OPT{safeOpcode};
 
 # and call it
 $parser->run(
              stream  => \@streamData,
-             tags    => \%tagHash,
              files   => \@ARGV,
              safe    => exists $OPT{activeContents} ? $safe : undef,
              filter  => exists $OPT{filter} ? $OPT{filter} : "html|perl",
@@ -487,7 +700,13 @@ $parser->run(
                                 targetLanguage => 'HTML',
                                 userSettings   => {map {$_=>1} exists $OPT{set} ? @{$OPT{set}} : ()},
                                },
-             vispro  => 1,
+             vispro       => 1,
+             nestedTables => 1,
+             var2stream   => 1,
+             predeclaredVars => {
+                                 CONVERTER_NAME    => basename($0),
+                                 CONVERTER_VERSION => $main::VERSION,
+                                },
              trace   => TRACE_NOTHING
                       + ((exists $OPT{trace} and $OPT{trace} &  1) ? TRACE_PARAGRAPHS : 0) 
                       + ((exists $OPT{trace} and $OPT{trace} &  2) ? TRACE_LEXER      : 0)
@@ -502,8 +721,13 @@ $parser->run(
             ) or exit 1;
 
 # build a backend
-my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_NOTHING);
-#my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_BACKEND);
+my $backend=new PerlPoint::Backend(name    => $me,
+                                   trace   => TRACE_NOTHING,
+                                   display =>   DISPLAY_ALL
+                                              + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)
+
+                                              + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
+                                   vispro  => 1);
 
 # register backend handlers
 $backend->register(DIRECTIVE_BLOCK,        \&handleBlock);
@@ -522,6 +746,8 @@ $backend->register(DIRECTIVE_DPOINT_ITEM,  \&handleDPointItem);
 $backend->register(DIRECTIVE_SIMPLE,       \&handleSimple);
 $backend->register(DIRECTIVE_TAG,          \&handleTag);
 $backend->register(DIRECTIVE_TEXT,         \&handleText);
+$backend->register(DIRECTIVE_VARRESET,     \&handleVarReset);    # ste
+$backend->register(DIRECTIVE_VARSET,       \&handleVarSet);      # ste
 $backend->register(DIRECTIVE_VERBATIM ,    \&handleVerbatim);
 
 my @BUFFER;     # buffer for current text
@@ -536,12 +762,9 @@ if (defined $OPT{boxtext_color}){
 }
 
 my $cellpadding = 5;
+
 # and run it
-$backend->run(\@streamData,
-             display => DISPLAY_ALL
-                     + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)                                
-                     + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0)
-);
+$backend->run(\@streamData);
 
 gen_navigation();
 if ($OPT{debug}){
@@ -568,11 +791,16 @@ if ($idx_cnt and ! $OPT{no_index}) {
 for (my $i = 1; $i <= $page_cnt; $i++){
   my $slide = $PAGES[$i]->{FILENAME};
   $slide = "$OPT{slide_dir}/$slide";
+
+  if ($OPT{count_only}){
+    printf STDERR "\r       ... creating slide %4d/%d", $i, $page_cnt if $verbose;
+  } else {
   print STDERR " creating $slide ..." if $verbose;
   print STDERR " Level ",
    $PAGES[$i]->{LEVEL}, " ===> ",
    $PAGES[$i]->{HD},
    , " <===\n" if $verbose;
+  }
   # open file
   open(SLIDE, "> $slide") or die "Can't open file $slide: $!\n";
 
@@ -641,9 +869,22 @@ for (my $i = 1; $i <= $page_cnt; $i++){
   # close file
   close(SLIDE);
 }  # loop over $PAGES[$i]
+if ($OPT{count_only}){
+  print "\n";
+}
 
 gen_contents();
 gen_index() unless $OPT{no_index};
+
+if ($verbose){
+  print STDERR "\n       Statistics:\n";
+  print STDERR "       -----------\n";
+  print STDERR "       $page_cnt pages\n";
+  print STDERR "       $idx_cnt index entries\n";
+  print STDERR "       $imge_cnt images\n";
+  print STDERR "       $missing_bullets_cnt missing bullet images\n" if $missing_bullets_cnt;
+  print STDERR "       $missing_backgrounds_cnt missing background images\n" if $missing_backgrounds_cnt;
+}
 
 exit 0;
 
@@ -690,7 +931,9 @@ sub gen_contents {
   my $contents = $PAGES[0]->{FILENAME};
   $contents = "$OPT{slide_dir}/$contents";
   open(CTX, "> $contents") or die "Can't open contents slide $contents: $!\n";
-  print STDERR " creating $contents ... ===> $OPT{contents_header} <===\n" if $verbose;
+  if (! $OPT{count_only}){
+    print STDERR " creating $contents ... ===> $OPT{contents_header} <===\n" if $verbose;
+  }
   my $hd;
   my @TREE;
   my $c_li_start = $OPT{no_contents_bullets}  ? "<P>"  : $li_start;
@@ -727,12 +970,16 @@ EOT
 EOT
 
   } else {
+    print CTX "<table width=500><tr><td>\n";
     print CTX "<ul>\n" unless $OPT{no_contents_indent};
   }
 
+  my $num = "";
   for (my $i=1; $i <= $page_cnt; $i++) {
     if ($OPT{num_headers}){
-      $hd = $PAGES[$i]->{NUMBER} . " " . $PAGES[$i]->{HD};
+#     $hd = $PAGES[$i]->{NUMBER} . " " . $PAGES[$i]->{HD};
+      $hd = $PAGES[$i]->{HD};
+      $num = $PAGES[$i]->{NUMBER} . " ";
     } else {
       $hd = $PAGES[$i]->{HD};
     }
@@ -740,7 +987,16 @@ EOT
     if ($OPT{tree_applet}){            #--------------------- TreeApplet
       my $level = $PAGES[$i]->{LEVEL};
       $TREE[$level] = $hd;
-      $TREE[$level] =~ s#/#,#g; # workaround for TreeApplet bug (no / possible ...)
+      # workaround for TreeApplet bug (no / possible ...)
+      $TREE[$level] =~ s#<[UBI]>##ig; 
+      $TREE[$level] =~ s#</[UBI]>##ig; 
+      $TREE[$level] =~ s#<CODE>##ig; 
+      $TREE[$level] =~ s#<SUP>##ig; 
+      $TREE[$level] =~ s#<SUB>##ig; 
+      $TREE[$level] =~ s#</CODE>##ig; 
+      $TREE[$level] =~ s#</SUP>##ig; 
+      $TREE[$level] =~ s#</SUB>##ig; 
+      $TREE[$level] =~ s#/#,#g; 
       my $title = join('/', @TREE[1 .. $level]);
       if ($OPT{frame_set}) {
         print CTX "<param name=\"item$i\" value=\"$title;book.gif,o_book.gif;$file,Data;$hd\">\n";
@@ -752,12 +1008,16 @@ EOT
       if ($OPT{java_script_navigation}) {
         $lnk = "javascript:Nav('top_$file', $f0, '$file', $f1, 'bot_$file', $f2)";
       } else {
-        $lnk = $file;
+          $lnk = $file;
       }
-      $hd = "<a href=\"$lnk\">$hd</a>";
-      print CTX "$contents_list_start $hd $contents_list_end\n";
+      if ($OPT{frame_set}) {
+        $hd = "<a href=\"$lnk\" target=\"Data\">$hd</a>";
+      } else {
+        $hd = "<a href=\"$lnk\">$hd</a>";
+      }
+      print CTX "$contents_list_start $num $hd $contents_list_end\n";
     }
-  }
+  } # for $i=1; $i <= $page_cnt; $i++
 
 
   if ($OPT{tree_applet}){              #--------------------- TreeApplet
@@ -777,6 +1037,7 @@ EOT
       print CTX "$contents_list_start $hd $contents_list_end\n";
     }
     print CTX "\n</ul>\n" unless $OPT{no_contents_indent};
+    print CTX "</td></tr></table>\n";
   }
 
   if (!$OPT{frame_set}) {
@@ -794,7 +1055,9 @@ sub gen_index {
   $index = "$OPT{slide_dir}/$index";
   open(IDX, "> $index") or die "Can't open index slide $index: $!\n";
 
-  print STDERR " creating $index ... ===> $OPT{index_header} <===\n" if $verbose;
+  if (! $OPT{count_only}){
+    print STDERR " creating $index ... ===> $OPT{index_header} <===\n" if $verbose;
+  }
   print_HTML_HEAD(*IDX, $idx_page_cnt);
   print_HTML_BODY(*IDX, $OPT{idx_back_image},
      $OPT{idx_bgcolor},
@@ -813,7 +1076,7 @@ $center_2
 
 EOT
   print IDX "<h3>\n";
-  foreach my $LL (qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z)){
+  foreach my $LL ('A'..'Z'){ # proposal: simplifying list (ste)
     if (defined $IDX_{$LL}){
       print IDX " <a href=\"#m_$LL\">$LL</a>";
     } else {
@@ -978,6 +1241,8 @@ sub gen_navigation {
 # print STDERR "NLAST @NLAST\n" if $verbose;
   for (my $l=$prev_level; $l >= 0; $l--){
     my $lst = $NLAST[$l];
+# TODO: check, if defined $k, $lst  IF NOT: header level missing ??
+#       warn user with a meaningfull message!
     for ($k=$NFIRST[$l]; $k<=$lst; $k++){
       if ($PAGES[$k]->{LEVEL} == $l){
         $PAGES[$k] -> {LAST} = $lst;
@@ -1008,17 +1273,25 @@ sub pr_navigation_table {
 sub start_new_page {
   my ($level, @BF) = @_;
   $page_cnt ++;
+  $HEADLINE_PATH[$level]=join('', @BF); # ste
+  $shift_level=1;
   my $pgn = sprintf("%04d", $page_cnt);
   $PAGES[$page_cnt] = {
          BODY => [],
          LEVEL => $level,
-         FILENAME => "$OPT{slide_prefix}$pgn.$OPT{slide_suffix}",
-         HD  => join("", @BF),
+         FILENAME => join('',
+			  $OPT{slide_prefix},
+			  exists $OPT{slide_md5} ? md5_hex(join('|', @HEADLINE_PATH[1..$level])) : $pgn,
+			  '.',
+			  $OPT{slide_suffix},
+			 ),    # ste
+         HD  => $HEADLINE_PATH[$level], # ste
 
        };
   $page_ref = $PAGES[$page_cnt] -> {BODY};
   my $hd = $PAGES[$page_cnt] -> {HD};
   $ANCHOR{$hd} = $page_cnt; # insert anchor for this page
+  $ANCHOR{join('|', @HEADLINE_PATH[1..$level])}=$page_cnt; # ste: insert a composite anchor for this page
   push @{$PAGES[$page_cnt]->{BODY}}, "<a name=\"$hd\">";
 
 } # start_new_page
@@ -1043,11 +1316,29 @@ sub handleHeadline {
 } # handleHeadline
 
 #----------------------------------------------------------
+
+# ste
+sub handleVarSet {
+ # store new value
+ push(@{$variables{$_[2]{var}}}, [$page_cnt, $_[2]{value}]);
+} # handleVarset
+
+#----------------------------------------------------------
+
+# ste
+sub handleVarReset {
+ # flag that all declared variables were deleted
+ # (flag it by an array reference, which cannot be passed as
+ # a variable value)
+ push(@{$variables{$_}}, [$page_cnt, []]) foreach keys %variables;
+} # handleVarset
+
+#----------------------------------------------------------
 sub set_bullet {
   my ($li_start, $li_end) = ($default_li_start, $default_li_end);
   if (defined $BULLETS[$shift_level]) {
     if ($BULLETS[$shift_level] !~ /^<LI/i){ # This should be an image for the bullet
-      $li_start = "<TABLE><TR><TD valign=\"TOP\"><IMG SRC=\"$BULLETS[$shift_level]\"></TD><TD>\n";
+      $li_start = "<TABLE><TR><TD valign=\"TOP\"><IMG SRC=\"$OPT{image_ref}/$BULLETS[$shift_level]\"></TD><TD>\n";
       $li_end = "\n</TD></TR></TABLE>\n";
     }
   }
@@ -1075,11 +1366,20 @@ sub handleList {
   } else {
     push_page $page_ref, "</$LIST>\n";
     @BUFFER = ();
-# TODO $shift_level auswerten: Falls man nicht mehr innerhalb von (evtl. verschachtelten)
-#      Listen ist: falls shift_level > 0: entsprechend viele </UL> einfuegen!
   }
   
 } # handleList
+
+sub end_list_indentation {
+# to be used before each paragarph which is not a list
+##
+## THIS IS NOT PERFECT: it breaks continued shifted lists which are
+## interrupted by text or examples ...
+## I would prefer to be able to use a <m shift paragraph at the end of a list !!!
+  for (my $i=$shift_level; $i > 1; $i--){
+    push_page $page_ref, "</UL>\n";
+  }
+} # end_list_indentation
 
 #----------------------------------------------------------
 sub handlePoint {
@@ -1136,6 +1436,7 @@ sub handleDPointItem {
 sub handleText {
   flush;
   if ($_[1]==DIRECTIVE_START){
+    end_list_indentation();
     push_page $page_ref, "\n\n<P>\n";
   } else {
     push_page $page_ref, "\n</P>\n";
@@ -1187,7 +1488,8 @@ sub handleVerbatim { # verbatim block without TAG recognition
      $bld_off = "";
   }
   if ($_[1]==DIRECTIVE_START){
-    push_page $page_ref, "\n$block_indent_0\n<TABLE CELLPADDING=$cellpadding$block_width><TR><TD bgcolor=\"$box_bg_color\"><PRE>\n";
+    end_list_indentation();
+    push_page $page_ref, "\n$block_indent_0\n<TABLE$box_border CELLPADDING=$cellpadding$block_width><TR><TD bgcolor=\"$box_bg_color\"><PRE>\n";
     push_page $page_ref, "$bld_on<FONT COLOR=\"$box_fg_color\">\n";
   } else {
     push_page $page_ref, "</FONT>$bld_off</PRE></TD></TR></TABLE>$block_indent_1\n";
@@ -1205,11 +1507,10 @@ sub handleTag {
   # special tags
 
   if ($_[2] eq "C") {                                           # special HTML escapes
-    flush;
     if ($_[1]==DIRECTIVE_COMPLETE) {
-      push_page $page_ref, "</CODE>";
+      push @BUFFER       , "</CODE>";
     } else {
-      push_page $page_ref, "<CODE>";
+      push @BUFFER       , "<CODE>";
     }
     return;
   }
@@ -1235,11 +1536,10 @@ sub handleTag {
 
   # character formatting Tags: handle B I U SUP SUB
   if ($_[2] eq "B"  or $_[2] eq "I"  or  $_[2] eq "U" or $_[2] eq "SUB" or $_[2] eq "SUP"  ){
-    flush;
     if ($_[1]==DIRECTIVE_START){
-      push_page $page_ref, "<$_[2]>";
+      push @BUFFER       , "<$_[2]>";
     } else {
-      push_page $page_ref, "</$_[2]>";
+      push @BUFFER       , "</$_[2]>";
     }
     return;
   }
@@ -1294,6 +1594,8 @@ sub handleTag {
       $box_fg_color = $BUFFER[0];
       @BUFFER = ();
     } else {
+      warn "Obsolete \\BOXTEXT tag detected. Please use the new\n".
+      " \\BOXCOLORS{fg=xxx bg=yyy} tag instead!\n";
       flush;
     }
     return;
@@ -1302,10 +1604,24 @@ sub handleTag {
   if ($_[2] eq "IMAGE") {                                          # image
     flush;
     if ($_[1]==DIRECTIVE_COMPLETE) {
+      $imge_cnt++;
       if ( !defined $_[3]->{'src'}) {
         die "*** ERROR: Image without 'src' parameter\n";
       }
-      my $file = $_[3]->{'src'};
+      my $img;
+      if ( defined $_[3]->{'__loaderpath__'}) {
+        my $source;
+        if ( $_[3]->{'src'} =~ /^\//){
+          $source = $_[3]->{'src'}; # absolute source path ...
+        } else {
+          $source = $_[3]->{'__loaderpath__'}. "/". $_[3]->{'src'}; # relative to __loaderpath__
+        }
+        $img = $source;
+        $img =~ s#.*/##;
+        update_file($source,  "$OPT{image_dir}/$img");
+      }
+      #my $file = $_[3]->{'src'};
+      my $file = "$OPT{image_ref}/$img";
       my $opt = "";
       if ( defined $_[3]->{'height'}) {
         my $height = $_[3]->{'height'};
@@ -1380,26 +1696,28 @@ sub handleTag {
   if ($_[2] eq "L") {                                                # general URL
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'url'}) {
-        pp_warn "ERROR: Hyperlink \L without 'url' parameter\n";
+        pp_warn "*** ERROR: Hyperlink \L without 'url' parameter\n";
       }
       my $link_text = join("",@BUFFER);
-      my $url = $_[3]->{'url'};
-        @BUFFER = ();
-     my $target = "";
-     if (defined $_[3]->{target}){
-       $target = $_[3]->{target};
-       $target = " target=\"$target\"";
-     }
-      push_page $page_ref, "<A HREF=\"$url\"$target>$link_text</A>";
+      @BUFFER = ();
+      my $target = "";
+      push_page $page_ref, "$link_text</A>";
     } else {
       flush;
+      my $url = $_[3]->{'url'} || "";
+      my $target = "";
+      if (defined $_[3]->{target}){
+        $target = $_[3]->{target};
+        $target = " target=\"$target\"";
+      }
+      push_page $page_ref, "<A HREF=\"$url\"$target>";
     }
     return;
   }
   if ($_[2] eq "PAGEREF") {                                          # page reference
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'name'}) {
-        pp_warn "ERROR: PAGEREF without 'name' parameter\n";
+        pp_warn "*** ERROR: PAGEREF without 'name' parameter\n";
       }
       my $a_name = escapes($_[3]->{'name'});
       push_page $page_ref, "_INTERN_PAGE:$a_name:_END";    # to be replaced later ...
@@ -1411,7 +1729,7 @@ sub handleTag {
   if ($_[2] eq "SECTIONREF") {                                       # section header reference
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'name'}) {
-        pp_warn "ERROR: PAGEREF without 'name' parameter\n";
+        pp_warn "*** ERROR: PAGEREF without 'name' parameter\n";
       }
       my $a_name = escapes($_[3]->{'name'});
       push_page $page_ref, "_INTERN_SECTION:$a_name:_END"; # to be replaced later ...
@@ -1424,7 +1742,7 @@ sub handleTag {
     if ($_[1]==DIRECTIVE_COMPLETE) {
       $xref_open = 0;
       if ( !defined $_[3]->{'name'}) {
-        pp_warn "ERROR: XREF without 'name' parameter\n";
+        pp_warn "*** ERROR: XREF without 'name' parameter\n";
       }
       my $ref_text = join("", @image_buffer, @BUFFER);
         @BUFFER = ();
@@ -1478,12 +1796,11 @@ sub handleTag {
     return;
   }
 
-# TODO border width configurable
   if ($_[2] eq "TABLE") {                                       # TABLE
     flush;
     if ($_[1]==DIRECTIVE_START) {
       if ( !defined $_[3]->{'separator'}) {
-#       pp_warn "ERROR: TABLE without 'separator' parameter\n";
+#       pp_warn "*** ERROR: TABLE without 'separator' parameter\n";
       }
       my $sep = $_[3]->{'separator'};
       my $table_bgcolor="";
@@ -1504,12 +1821,19 @@ sub handleTag {
     return;
   }
 
-# TODO make it configurable via options
   if ($_[2] eq "TABLE_HL") {                                       # TABLE
+    if ( join("", @BUFFER) =~ /^\s*$/){
+      $td_was_empty = 1;
+    } else {
+      $td_was_empty = 0;
+    }
     flush;
     if ($_[1]==DIRECTIVE_START) {
       push_page $page_ref, "<TD$table_hl_bgcolor><B>";
     } else {
+      if ($td_was_empty) {
+        push_page $page_ref, "\&nbsp;";
+      }
       push_page $page_ref, "</B></TD>";
     }
     return;
@@ -1527,10 +1851,18 @@ sub handleTag {
   }
 
   if ($_[2] eq "TABLE_COL") {                                       # TABLE
+    if ( join("", @BUFFER) =~ /^\s*$/){
+      $td_was_empty = 1;
+    } else {
+      $td_was_empty = 0;
+    }
     flush;
     if ($_[1]==DIRECTIVE_START) {
       push_page $page_ref, "<TD$table_hl_bgcolor>";
     } else {
+      if ($td_was_empty) {
+        push_page $page_ref, "\&nbsp;";
+      }
       push_page $page_ref, "</TD>";
     }
     return;
@@ -1540,7 +1872,7 @@ sub handleTag {
     flush;
     if ($_[1]==DIRECTIVE_START) {
       if ( !defined $_[3]->{'lang'}) {
-        pp_warn "ERROR: EMBED without 'lang' parameter\n";
+        pp_warn "*** ERROR: EMBED without 'lang' parameter\n";
       }
       elsif ($_[3]->{'lang'} =~ /HTML/i){
         $embedded_html = 1;
@@ -1559,12 +1891,12 @@ sub handleTag {
 #----------------------------------------------------------
 sub handleDocument {
   if ($_[1]==DIRECTIVE_START) {
-    warn "Document (base $_[2]).\n" if $verbose;
+    warn "\nDocument start (base $_[2]).\n" if $verbose;
 
   }
   else {
 
-    warn "Document (base $_[2]).\n" if $verbose;
+    warn "\nDocument end (base $_[2]).\n" if $verbose;
   }
 } # handleDocument
 
@@ -1630,6 +1962,7 @@ sub print_HTML_HEAD {
   my ($f, $page_no) = @_;
   print $f <<"EOT";
 <HTML>
+<!-- *** Created by $me, build $VERSION from PerlPoint-Converters $PACK_VERSION  -->
 <HEAD>
 EOT
 
@@ -1638,6 +1971,15 @@ EOT
   }
   print $f <<"EOT";
 <TITLE>$PAGES[$page_no]->{HD}</TITLE>
+EOT
+
+  if ($OPT{style_sheet}) {
+    print $f <<EOT;
+<LINK REL="stylesheet" TYPE="text/css" HREF="$OPT{style_sheet}">
+EOT
+  }
+  
+  print $f <<EOT;
 </HEAD>
 EOT
 
@@ -1664,7 +2006,7 @@ sub insert_template {
   my ($f, $page_no, $tpl) = @_;
 
   if ($tpl){
-    open(TPL, $tpl) or die "Can't open template $tpl: $!\n";
+    open(TPL, "$style_dir/$tpl") or die "Can't open template $style_dir/$tpl: $!\n";
 
     # insert contents of template and replace KEYWORDS
     my ($txt_first, $txt_last, $txt_next, $txt_prev, $txt_up, $txt_down, $txt_index, $txt_cont);
@@ -1685,10 +2027,12 @@ sub insert_template {
 
     if ($OPT{java_script_navigation}){
   #   $url_cont = "javascript:Nav('top_$url_cont', $f0, '$url_cont', $f1, 'bot_$url_cont', $f2)"
-      $url_cont = $url_cont.'" target="Index';
+#     $url_cont = $url_cont.'" target="Index';
+      $url_cont = $url_cont."\" target=\"$OPT{contents_target}";
     } else {
       if ($OPT{frame_set}){
-        $url_cont = $url_cont.'" target="Index';
+#       $url_cont = $url_cont.'" target="Index';
+        $url_cont = $url_cont."\" target=\"$OPT{contents_target}";
       } else {
         $url_cont =  $url_cont;
       }
@@ -1728,6 +2072,10 @@ sub insert_template {
        s/PAGE_CNT/$page_cnt/g;
        s/PAGE/$pgno/g;
        s/TITLE/$OPT{title}/g;
+
+       # variables
+       s/VAR\((.+?)\)/variableValue($1, $page_no-1)/ge;
+
       print $f $_;
     }
     close(TPL);
@@ -1743,7 +2091,8 @@ sub mk_url {
     $url =  $PAGES[$PAGES[$page_no] ->{$DIR}] -> {FILENAME};
     if ($page_no == 1 and $DIR eq "PREV" ){ # link to contents page
       if ($OPT{frame_set} and not $OPT{java_script_navigation}){
-        $url = $url.'" target="Index'
+       #$url = $url.'" target="Index'
+        $url = $url."\" target=\"$OPT{contents_target}"
       }
     }
     $url = $OPT{java_script_navigation} ?
@@ -1767,13 +2116,35 @@ sub replace_internal_links {
         last if ($line !~ /$INTERN_TYPE:(.*?):TXT:(.*?):_END/);
         $a_name = $1;
         $txt = $2 || "UNDEF XREF TEXT";
+
+        # ste: clean up composite anchor names
+        $a_name=~s/\s*\|\s*/\|/g;
       } else {
         last if ($line !~ /$INTERN_TYPE:(.*?):_END/);
         $a_name = $1;
+
+        # ste: clean up composite anchor names
+        $a_name=~s/\s*\|\s*/\|/g;
+
+        # ste: We would need to complete incomplete composite
+        # anchors here exactly as below, but it's ugly to multiply
+        # code - possibly these parts can be restructered to
+        # avoid more doubled code? (Note that the cleanup line
+        # above is already the same in both cases of this condition.)
+
         $txt = $PAGES[$ANCHOR{$a_name}] -> {$REF};
       }
+
+      # ste: try to complete an incomplete composite anchor
+      if (not defined($ANCHOR{$a_name}) and $a_name=~/\|/) {
+        my $pattern=quotemeta($a_name);
+        my $completed=(grep(/\|$pattern$/, sort keys %ANCHOR))[0];
+        $a_name=$completed if $completed;
+      }
+
       if (! defined $ANCHOR{$a_name}) {
-        pp_warn "$INTERN_TYPE with undefined anchor name '$a_name' detected\n";
+        (my $tag = $INTERN_TYPE) =~ s/_INTERN_/\\/;
+        pp_warn "$tag with undefined anchor name '$a_name' detected\n";
         $line =~ s/$INTERN_TYPE:.*?:_END/<A HREF="UNDEF#$a_name">UNDEF<\/A>/;
         next;
       }
@@ -1790,13 +2161,44 @@ sub replace_internal_links {
 #----------------------------------------------------------
 sub copy_file { # should work on each system ...
   my ($from, $to) = @_;
-  open(FROM, "< $from") or die "Can't open $from: $!\n";
-  open(TO  , "> $to")   or die "Can't open $to: $!\n";
-  while(<FROM>) {
-    print TO replace_keywords($_);
+  if (! -T $from){
+    copy($from, $to); # (use correct mode for binary files)
+  } else { # should be text file ...
+    open(FROM, "< $from") or die "Can't open $from: $!\n";
+    open(TO  , "> $to")   or die "Can't open $to: $!\n";
+    while(<FROM>) {
+      print TO replace_keywords($_);
+    }
+    close(FROM); close(TO);
   }
-  close(FROM); close(TO);
 } # copy_file
+
+#----------------------------------------------------------
+sub update_file { # 
+  my ($from, $to) = @_;
+  # check, if update is really needed:
+  return if $to eq $from;
+  # copy:
+  if (! -T $from){
+    if (-e $to){
+      my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$time2) = stat(_);
+      my $time1;
+      ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$time1) = stat($from);
+      return if $time1 <= $time2;
+    }
+    print STDERR "... copying $from to $to\n" if $verbose;
+    copy($from, $to); # (use correct mode for binary files)
+  } else { # should be text file ...
+    ## always copy, because the keywords might have changed !
+    print STDERR "... copying $from to $to\n" if $verbose;
+    open(FROM, "< $from") or die "Can't open $from: $!\n";
+    open(TO  , "> $to")   or die "Can't open $to: $!\n";
+    while(<FROM>) {
+      print TO replace_keywords($_);
+    }
+    close(FROM); close(TO);
+  }
+} # update_file
 
 #----------------------------------------------------------
 sub replace_keywords {
@@ -1805,6 +2207,13 @@ sub replace_keywords {
   $line =~ s/TXT_INDEX/$OPT{index_header}/g;
   $line =~ s/PAGE_CNT/$page_cnt/g;
   $line =~ s/TITLE/$OPT{title}/g;
+  $line =~ s/BASE_LEFT_TXT/$OPT{base_left_txt}/g;
+  $line =~ s/BASE_RIGHT_TXT/$OPT{base_right_txt}/g;
+  $line =~ s/BASE_MIDDLE_TXT/$OPT{base_middle_txt}/g;
+  $line =~ s/TOP_LEFT_TXT/$OPT{top_left_txt}/g;
+  $line =~ s/TOP_RIGHT_TXT/$OPT{top_right_txt}/g;
+  $line =~ s/TOP_MIDDLE_TXT/$OPT{top_middle_txt}/g;
+  $line =~ s/LOGO_IMAGE_FILENAME/$OPT{logo_image_filename}/g;
   return $line;
 } # replace_keywords 
 
@@ -1825,7 +2234,47 @@ sub java {
 EOT
 } # java
          
+#----------------------------------------------------------
 
+# ste: resolve a variable
+sub variableValue
+ {
+  # get parameters
+  my ($name, $page)=@_;
+
+  # declare return value, initialize with empty string
+  my $value='';
+
+  # known variable?
+  if (exists $variables{$name})
+    {
+     # walk through the variables settings
+     # and follow the hints (this is straight
+     # forward, both algorithm and data structure
+     # might be worth to be improved)
+     foreach my $hint (@{$variables{$name}})
+       {
+        # all done if the hint was stored by
+        # a page with a greater number than ours
+        last if $hint->[0]>$page;
+
+        # setting or reset?
+        unless (ref($hint->[1]))
+          {
+           # update variable
+           $value=$hint->[1];
+          }
+        else
+          {
+           # reset variable
+           $value='';
+          }
+       }
+    }
+    
+  # supply result
+  $value;
+ }
 __END__
 
 
@@ -1838,7 +2287,7 @@ B<pp2html> - PerlPoint to HTML converter
 
 =head1 VERSION
 
-This manual describes version B<0.009, build 1.13>.
+This manual describes version B<0.10, build 1.21>.
 
 =head1 SYNOPSIS
 
@@ -1896,7 +2345,7 @@ been indexed
 
 =item *
 
-Optional layout as HTML frameset (header frame, contents frame,
+Optional layout as HTML frame set (header frame, contents frame,
 footer frame and eventually index frame). The footer frame has
 always the same position on the screen.
 
@@ -2227,6 +2676,31 @@ templates are included:
   TXT_INDEX           text specified by --index_header
   PAGE_CNT            number of pages
   PAGE                page or chapter number
+  TOP_LEFT_TXT        text for left side in top templates, see --top_left_txt
+  TOP_RIGHT_TXT       text for right side in top templates, see --top_right_txt
+  TOP_MIDDLE_TXT      text for middle in top templates, see --top_middle_txt
+  BASE_LEFT_TXT       text for left side in bottom templates, see --base_left_txt
+  BASE_RIGHT_TXT      text for right side in bottom templates, see --base_right_txt
+  BASE_MIDDLE_TXT     text for middle in bottom templates, see --base_middle_txt
+  LOGO_IMAGE_FILENAME text for the logo image filename in template files, 
+                      see --logo_image_filename
+
+=item --top_left_txt
+
+=item --top_right_txt
+
+=item --top_middle_txt
+
+=item --base_left_txt
+
+=item --base_right_txt
+
+=item --base_middle_txt
+
+=item --logo_image_filename
+
+These texts will be used to replace the corresponding keywords in template files which are used in
+the slides. See for example the orange_slides style.
 
 =item --boxtext_bold=ON
 
@@ -2240,6 +2714,10 @@ Text in colored textboxes will be printed B<bold> or normal.
 
 Set background and forground colors for block paragraphs
 
+=item --box_border=width
+
+Set the border width of block paragraphs.
+
 =item --box_width=width
 
 Set the width of block paragraphs. This assures that all colored boxes
@@ -2250,6 +2728,15 @@ Example: --box_width="80%"
 =item --bullet=filename
 
 Filename of a GIF or JPEG image which is used for the bullets in bullet lists.
+This option can be used more than once. In this case the first occurance is used
+for top level lists, the second occurance for second level lists etc.
+
+B<NOTE:> The filename must be given as an absolute pathname or relative to the directory where
+the C<pp2html> program is started (i. e. relative to the directory where the PerlPoint input file
+resides). When the --style option is used, the filename must be specified relative to the
+directory where the style is defined. Normally all bullet images for a style reside in the
+style directory.
+
 
 =item --block_indent=m
 
@@ -2276,13 +2763,19 @@ filename of the startfile for the frame set. The frame_set template is copied to
 file in the slide_dir directory.
 
 
+=item --contents_target
+
+This is used as the target frame in all hyperlinks to the table of contents.
+Useful for example if you have a frame set without an Index frame. In this case it
+might be usefull to set the C<--contents_target> option to "Data".
+
 =item --index_bot=n
 
 =item --index_dat=n
 
 =item --index_top=n
 
-Indices of the bottom, top and index frames within the frameset.
+Indices of the bottom, top and index frames within the frame set.
 Used for java script navigation procedure.
 
 
@@ -2321,7 +2814,7 @@ the level and go the the next higher section or step down to a subsection.
 All page headers are preceeded by the chapter number (e.g. 2.2.3) which is determined
 by the position of the page and the level of its header.
 
-=item --no_contents_indet
+=item --no_contents_indent
 
 =item --no_contents_bullets
 
@@ -2339,6 +2832,8 @@ of each page.
 
 =item --slide_dir=directory
 
+=item --target_dir=directory
+
 Directory in which the HTML files are to be created.
 
 =item --slide_prefix=text
@@ -2348,6 +2843,15 @@ Prefix for all HTML files. Default is "Slide".
 =item --slide_suffix=text
 
 Suffix for all HTML files. Default is "htm".
+
+=item --slide_md5
+
+This option specifies, that all filenames should have the form E<lt>slide_prefixE<gt>E<lt>md5_checksumE<gt>.E<lt>slide_suffixE<gt>
+e. g. C<slide85b9a93686f5416d2f85964a33fad95b.htm>. The C<md5_checksum> is calculated from the slide header.
+This can be usful, if there are many changes in your document (addition/removal of slides) and you use 
+hyperlinks to pages of your document from within other documents.
+
+B<NOTE:> This feature is still experimental.
 
 =item --title=text
 
@@ -2368,6 +2872,26 @@ Width and height of the tree applet area.
 Codebase option for the tree applet. Default is ./
 
 
+==item --style=style_name
+
+==item --style_dir=style_dirname
+
+Using pre-defined styles. Styles are pre-defined collections of templates and
+configuration files which are stored in a directory whose name is the name
+of this style. Several of such styles can be placed in a
+style directory (collection of styles). 
+
+With C<--style_dir=style_dirname> you can specify one
+or more style directories (the option can be used more than once). All
+specified style directories are searched for the style which is given by the
+C<--style> option.
+
+Examples of styles are delivered with the PerlPoint-Converters distribution.
+
+=item --image_dir=dirname
+
+This is the name of the image directory in the target area. All images from the style
+directory and from the PerlPoint source are copied to this location.
 
 =item --trans_table=filename
 
@@ -2395,13 +2919,6 @@ specifed as octal numbers as in the folowing example:
 PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
 reasons of security this feature is deactivated by default. Set this option to active
 it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
-
-=item --allTags
-
-C<pp2html> implements the PerlPoint tags I<B>, I<C>, I<E>, I<I> and I<IMAGE>. Because every
-PerlPoint translator can define its own tags it may happen that a source file containes
-more than these. If they do not pass translation try this option which makes I<all> tags
-accepted. I<This is still an experimental feature.>
 
 =item --cache
 
@@ -2447,6 +2964,11 @@ supresses warnings;
 
 a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messages are suppressed;
 
+=item --count_only
+
+If this option is set, only a counter will indicate that slides are created. Otherwise 
+for all slides the full header is printed while generating the slides.
+
 =item --safeOpcode <opcode>
 
 If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
@@ -2454,6 +2976,8 @@ evaluated. To keep security this is done via an object of class B<Safe> which re
 to permitted operations. By this option you can declare which opcode (or opcode tag) is
 permitted. Please see the B<Safe> and B<Opcode> manual pages for further details. (These modules
 come with perl.)
+
+Pass C<ALL> to allow I<everything>.
 
 This option can be used multiply.
 
@@ -2572,6 +3096,15 @@ a simple script which created HTML files from an ASCII file.
 
 C<pp2latex>
 
+=head1 SUPPORT
+
+A PerlPoint mailing list is set up to discuss usage,
+ideas, bugs, suggestions and translator development. To
+subscribe, please send an empty message to 
+perlpoint-subscribe@perl.org.
+
+If you prefer, you can contact me via lorenz.domke@gmx.de as well.
+
 =head1 AUTHOR
 
 Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
@@ -2589,6 +3122,28 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 # --------------------------------------------------------------------------
 
 $Log: pp2html,v $
+Revision 1.21  2001/06/16 12:37:08  lorenz
+0.10 final6; always update textfiles (KEYWORDS ...)
+
+Revision 1.20  2001/06/16 11:47:32  lorenz
+0.10 final4
+
+Revision 1.19  2001/06/16 11:29:37  lorenz
+checkin for relase 0.10 (final3 :-)
+
+Revision 1.18  2001/06/15 15:56:02  lorenz
+ci for Release 0.10 (final)
+
+Revision 1.17  2001/06/14 12:00:56  lorenz
+checkin for version 0.10_05
+
+Revision 1.15  2001/04/05 11:30:53  lorenz
+use PerlPoint 0.34 with Tags::HTML
+multi-levle Headline anchors (patch from Jochen Stenzel)
+
+Revision 1.14  2001/03/30 07:25:18  lorenz
+--contents_target option
+
 Revision 1.13  2001/03/11 11:55:11  lorenz
 checkin for version 0.009
 

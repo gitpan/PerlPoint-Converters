@@ -1,6 +1,6 @@
 This is the README file for PerlPoint-Converters
 
-$Id: README,v 1.8 2001/03/06 21:21:28 lorenz Exp $
+$Id: README,v 1.11 2001/06/16 12:37:08 lorenz Exp $
 
 Covered topics:
 
@@ -88,6 +88,9 @@ or come with your Perl distribution:
   PerlPoint::Parser
   PerlPoint::Backend
   PerlPoint::Constants
+  PerlPoint::Tags::Basic;
+  PerlPoint::Tags::HTML;
+  PerlPoint::Tags::LaTeX;
   
 The TreeApplet classes are contained in the images subdirectory of this
 distribution. For more information about the TreeApplet classes refer to
@@ -97,9 +100,25 @@ This distribution contains an older version which was freely available.
 
 What's new in this version
 --------------------------
-This is version 0.009
+This is version 0.10
+You will need PerlPoint-Packet version 0.34 for this release.
 
 Please refer to file "Changes".
+
+NOTE: This is major release. The handling of directories in \IMAGE tags has changed:
+      Now the image filenames must be specified relative to the calling PerlPoint 
+      file (or as absolute pathnames). 
+
+      Filenames specified with the --bullet options must now also be relative to
+      the start directory (where pp2html is called) or relative to the style
+      directory.
+
+      The --style, --style_dir options are new and should simplify the handling of
+      templates. You can now build a collection of pre-defined styles which can
+      easily be called with the --style option.
+
+NOTE: Documentation is not yet perfect. This will be one of the major issues of the
+      next release which will come soon! Please keep tuned.
 
 
 Installation
@@ -118,7 +137,7 @@ information.
 
 The test script `t/test_pp.t', which is invoked via `make test', runs the input 
 file `ppdoc.pp' four times through `pp2html' using four different configuration
-files.  The resulting HTML files are places in the `ex_*' subdirectories. These
+files.  The resulting HTML files are placed in the `ex_*' subdirectories. These
 examples contain documentation for `pp2html'.
 
 Test Cases

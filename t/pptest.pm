@@ -18,8 +18,14 @@ sub cmp_files {
   my (@F1, @F2);
   open(F1, $f1) or return 0;
   open(F2, $f2) or return 0;
-  @F1=<F1>;
-  @F2=<F2>;
+  while (<F1>) {
+    next if /^<!-- .*Created by/;
+    push @F1, $_;
+  }
+  while (<F2>) {
+    next if /^<!-- .*Created by/;
+    push @F2, $_;
+  }
   close(F1);
   close(F2);
 

@@ -6,18 +6,42 @@ Makefile.PL
 pp2html           # Main program for converison to HTML
 pp2latex          # Converison to Latex
 ppdoc.pp          # Test Input and Documentation
-doc/parser-paragraphs.pp        # chapters with paragraph docu
-doc/parser-tags.pp              # chapters with tags docu
 doc/parser-active-contents.pp   # chapters with active contents docu
 doc/parser-faq.pp               # chapters with faqs
-t/test_pp.t
-t/test_bullets.t
-t/test_numlists.t
-t/test_bullets.pp
-t/test_numlists.pp
-t/ref_bullets.htm
-t/ref_numlists.htm
+doc/parser-paragraphs.pp        # chapters with paragraph docu
+doc/parser-tags.pp              # chapters with tags docu
+doc/doc-functions.pp 
+doc/tagdoc-example.pp
+doc/faq/Misc/parser-faq-1.pp
+doc/faq/Misc/parser-faq-2.pp
+doc/faq/Misc/parser-faq-3.pp
+doc/faq/Portability/portability-faq-1.pp
+doc/tags/tag-B.pp
+doc/tags/tag-C.pp
+doc/tags/tag-I.pp
+doc/tags/tag-IMAGE.pp
+doc/tags/tag-READY.pp
+doc/tags/image.gif
+
+lib/PerlPoint/Tags/HTML.pm
+lib/PerlPoint/Tags/LaTeX.pm
+
 t/pptest.pm
+t/ref_bullets.htm
+t/ref_bullets2.htm
+t/ref_bullets3.htm
+t/ref_numlists.htm
+t/ref_tables1.htm
+t/ref_tables2.htm
+t/test_bullets.pp
+t/test_bullets.t
+t/test_numlists.pp
+t/test_numlists.t
+t/test_pp.t
+t/test_styles.t
+t/test_tables.pp
+t/test_tables.t
+
 ltx.cfg
 ex_frm_norm.cfg
 ex_frm_tree.cfg
@@ -36,13 +60,40 @@ ex_std_tree-bot.tpl
 ex_std_tree-bot_toc.tpl
 ex_std_tree-top.tpl
 ex_std_tree-top_toc.tpl
-images/FolderItem.class
-images/Item.class
-images/ItemAction.class
-images/karawane-50.gif
-images/ScrPane.class
-images/TreeApp.class
-images/TreeControl.class
+orange_slides.cfg
+big_blue.cfg
+pp_book.cfg
+
+pp2html_styles/applet_src/FolderItem.class
+pp2html_styles/applet_src/Item.class
+pp2html_styles/applet_src/ItemAction.class
+pp2html_styles/applet_src/ScrPane.class
+pp2html_styles/applet_src/TreeApp.class
+pp2html_styles/applet_src/TreeControl.class
+
+pp2html_styles/orange_slides/Logo.gif        
+pp2html_styles/orange_slides/orange_slides-frm.tpl
+pp2html_styles/orange_slides/orange_slides.cfg
+pp2html_styles/orange_slides/orange_line.png
+pp2html_styles/orange_slides/orange_slides-nav.tpl
+pp2html_styles/orange_slides/sqr_orange1.png
+pp2html_styles/orange_slides/orange_slides-bot.htm
+pp2html_styles/orange_slides/orange_slides-top.htm
+pp2html_styles/orange_slides/sqr_orange2.png
+
+pp2html_styles/big_blue/big_blue-bot.tpl
+pp2html_styles/big_blue/big_blue-top.tpl
+pp2html_styles/big_blue/big_blue.cfg
+pp2html_styles/big_blue/karawane-50.gif
+
+pp2html_styles/pp_book/Logo.gif
+pp2html_styles/pp_book/pp_book-bot.htm
+pp2html_styles/pp_book/pp_book-frm.tpl
+pp2html_styles/pp_book/pp_book-nav.tpl
+pp2html_styles/pp_book/pp_book-top.htm
+pp2html_styles/pp_book/pp_book.cfg
+
+
 images/book.gif
 images/dot01.gif
 images/dot2.jpg
@@ -57,3 +108,4 @@ images/o_book.gif
 images/prev.gif
 images/up.gif
 images/gradient.jpg
+images/karawane-50.gif

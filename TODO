@@ -1,9 +1,30 @@
 This is the TODO list for PerlPoint-Converters
 ==============================================
-$Date: 2001/03/06 21:21:28 $
-$Revision: 1.1 $
+$Date: 2001/06/14 12:00:56 $
+$Revision: 1.2 $
 
 (sorted by priority: 1 = very high, ..., 6 = very low)
+
+[] Documentation should be better:
+   more structure:
+   -  FAQ
+   -  Getting Started
+   -  Reference Manual
+
+[] FAQ zu Umlauten (DOS --> UNIX)
+
+[] Monolithisches HTML (all in one file)
+
+[] Style Option
+
+[3] allow tags und html escapes in headers
+
+
+[3] \REQUIRE tag to make sure that a certain version of pp2html is used
+
+[2] link paths ...
+
+[3] internal reference error messages 
 
 [2] java_script_navigation:
     if disabled: do not create java script headers  (ok, done)
@@ -14,11 +35,6 @@ $Revision: 1.1 $
 [3] Usage: tmp filename so that it will also work on Win32 platform
 
 [3] Doc: update POD Docu, update ppdoc.pp (new features)
-
-[3] Doc: patch install procedure so that PROGRAM, P_VERSION are
-    replaced before the man pages are created
-    or use a script for updating version numbers consistently in all files
-    (source should be Makefile.PL)
 
 [3] Build a reasonable test suite (./t)
 
@@ -32,6 +48,9 @@ $Revision: 1.1 $
     a config file (containing options from %OPT) then warn the user,
     he might have called the file without @ (common error with ArgvFile ...)
 
-[4] Style Sheet Support
+[4] Improve Style Sheet Support
 
+[4] Interactive Perl/Tk edit-script for config files (get all options from pp2html 
+    source code !!!)
 
+list of innermost tags in docu: \X \L \A

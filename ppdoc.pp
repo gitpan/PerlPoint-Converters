@@ -1,15 +1,19 @@
 // vim: set filetype=pp2html : 
 // Comment: ppdoc.pp: documentation and testfile for pp2html
 //
-// $Id: ppdoc.pp,v 1.9 2001/03/11 11:55:11 lorenz Exp $
-// $Revision: 1.9 $
-// $Date: 2001/03/11 11:55:11 $
-
+// $Id: ppdoc.pp,v 1.11 2001/06/15 15:56:02 lorenz Exp $
+// $Revision: 1.11 $
+// $Date: 2001/06/15 15:56:02 $
+ 
 // Some variabels:
 
-$pp2html = pp2html
-$pp2latex = pp2latex
-$testfile = ppdoc.pp
+$pp2html=pp2html
+
+$pp2latex=pp2latex
+
+$AUTHOR=L. Domke
+
++BLACK:\F{color=black}<__body__>
 
 =Introduction
 
@@ -106,10 +110,14 @@ For a detailed description refer to the
 documentation of the PerlPoint format.
 PerlPoint::Parser, PerlPoint::Backend
 
+$AUTHOR=J. Stenzel
+
 \INCLUDE{type=PP file="doc/parser-paragraphs.pp"}
 
 
 =Tags
+
+$AUTHOR=L. Domke
 
 There are three kinds of tags:
 
@@ -119,9 +127,13 @@ There are three kinds of tags:
 
 * Backend tags defined by \C<pp2html>
 
+$AUTHOR=J. Stenzel
+
 \INCLUDE{type=PP file="doc/parser-tags.pp" headlinebase=1}
 
 ==Backend Tags
+
+$AUTHOR=L. Domke
 
 The following list shows all tags which are provided by \C<pp2html> in addition
 to the tags which are provided by the \C<PerlPoint::Parser> (like \\INCLUDE):
@@ -401,8 +413,8 @@ There is also a \X<\\TABLE> tag which allows to set different parameters like
 
 \TABLE{separator=";" bgcolor=yellow head_bgcolor="silver"}
 pro ; contra
-more flexibiliy ; more "line noise"
-colored heading ; -
+\BLACK<more flexibiliy> ; \BLACK<more "line noise">
+\BLACK<colored heading> ; \BLACK<->
 
 \END_TABLE
 
@@ -416,13 +428,13 @@ colored heading ; -
 
 ==Images
 
-It is possible to insert GIF or JPEG images into the text:
+It is possible to insert GIF, JPEG or PNG images into the text:
 
-\IMAGE{src="../images/karawane-50.gif" height=50 width=150 alt="The camel is your friend" align=right}
+\IMAGE{src="./images/karawane-50.gif" height=50 width=150 alt="The camel is your friend" align=right}
 
 The syntax is:
 
-  \\IMAGE{src="../images/karawane-50.gif" alt="The camel is your friend" 
+  \\IMAGE{src="./images/karawane-50.gif" alt="The camel is your friend" 
       height=50  width=200 align=right}
 
 =Internal Links and References
@@ -484,15 +496,42 @@ with the \X<\\PRINT_TOC> tag.
 
 // Some advanced features:
 
+$AUTHOR=J. Stenzel
+
 \INCLUDE{type=PP file="doc/parser-active-contents.pp"}
 
-=Literatur, Links
+=Literature, Links
+
+$AUTHOR=L. Domke
 
 This chapter presents some hints for further reading.
 
 See for example:
 
-  http://www.reportlab.com/demos/pythonpoint/pythonpoint.html
+* \C<http://www.reportlab.com/demos/pythonpoint/pythonpoint.html>
 
   The GNU Portable presenter, available on CPAN (PPresenter)
+
+* Contribution to the Third German Perl-Workshop 2001:
+  \C<http://www.perlworkshop.de/2001/contributions/PerlPoint/pptalk/slide0001.htm>
+
+* Article in the \C<Linux Enterprise> magazine (\C<http://www.linuxenterprise.de> 
+  issue 7, 2001: "Auf dem Präsentierteller"
+
+
+=Advanced Example
+
+The following pages are created by inlcuding the \C<tagdoc-example.pp> file:
+
+  \\INCLUDE{type=PP file="doc/tagdoc-example.pp"}
+
+This demonstrates how pages can be constructed by embedded Perl code!
+Please have a look at the included PerlPoint files \C<doc/tagdoc-example.pp>
+and \C<doc/doc-functions.pp>.
+
+$AUTHOR=J. Stenzel
+
+\INCLUDE{type=PP file="doc/tagdoc-example.pp"}
+
+$AUTHOR=L. Domke
 
