@@ -1,8 +1,7 @@
-<!--
-  *** This text is included just below the BODY line in all HTML pages
-  $Revision: 1.1 $
-  $Date: 2000/10/04 21:51:16 $
--->
+<!-- ---- Navigation Bar -------------------------------- BEGIN
+  $Revision: 1.2 $
+  $Date: 2001/03/06 21:21:28 $
+----------------------------------------------------------- -->
 
 <TABLE> 
 <TR>
@@ -13,3 +12,4 @@
   </td>
 </TR>
 </TABLE>
+<!-- ---- Navigation Bar -------------------------------- END -->

@@ -1,6 +1,7 @@
 README
 Changes
 MANIFEST
+TODO
 Makefile.PL
 pp2html           # Main program for converison to HTML
 pp2latex          # Converison to Latex
@@ -8,7 +9,15 @@ ppdoc.pp          # Test Input and Documentation
 doc/parser-paragraphs.pp        # chapters with paragraph docu
 doc/parser-tags.pp              # chapters with tags docu
 doc/parser-active-contents.pp   # chapters with active contents docu
-test.pl
+doc/parser-faq.pp               # chapters with faqs
+t/test_pp.t
+t/test_bullets.t
+t/test_numlists.t
+t/test_bullets.pp
+t/test_numlists.pp
+t/ref_bullets.htm
+t/ref_numlists.htm
+t/pptest.pm
 ltx.cfg
 ex_frm_norm.cfg
 ex_frm_tree.cfg
@@ -36,6 +45,9 @@ images/TreeApp.class
 images/TreeControl.class
 images/book.gif
 images/dot01.gif
+images/dot2.jpg
+images/sqr_blue1.gif
+images/sqr_blue2.gif
 images/down.gif
 images/first.gif
 images/info.gif
@@ -44,3 +56,4 @@ images/next.gif
 images/o_book.gif
 images/prev.gif
 images/up.gif
+images/gradient.jpg

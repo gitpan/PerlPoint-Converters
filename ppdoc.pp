@@ -1,9 +1,9 @@
 // vim: set filetype=pp2html : 
 // Comment: ppdoc.pp: documentation and testfile for pp2html
 //
-// $Id: ppdoc.pp,v 1.7 2001/01/17 22:24:16 lorenz Exp $
-// $Revision: 1.7 $
-// $Date: 2001/01/17 22:24:16 $
+// $Id: ppdoc.pp,v 1.9 2001/03/11 11:55:11 lorenz Exp $
+// $Revision: 1.9 $
+// $Date: 2001/03/11 11:55:11 $
 
 // Some variabels:
 
@@ -47,13 +47,14 @@ following commands:
 
   % pp2latex @ltx.cfg ppdoc.pp > ppdoc.tex
   % latex ppdoc.tex
+  % makeindex ppdoc.idx
   % latex ppdoc.tex
   % dvips -o ppdoc.ps ppdoc.dvi
   % ghostview ppdoc.ps
 EOC
 
 The first command creates all HTML slides. Naming conventions are set up via
-options in the \C<pp.cfg> configuration file.
+options in the \C<ex_std_norm.cfg> configuration file.
 
 The commands starting with \C<pp2latex> create a LaTeX file and from this a
 Postscript file. Note that the \C<latex> command is called twice. This is necessary
@@ -74,8 +75,8 @@ The number of equal signs determines the level of the header: \X{mode=index_only
 
 Each \X<header> \B<must> be followed by a blank line.
 
-Here come some tests for index entries with german characters:
-Index entries which start with a german \I<Umlaut> like \X<Übertrag>
+Here come some tests for index entries with German characters:
+Index entries which start with a German \I<Umlaut> like \X<Übertrag>
 or \X<ärgerlich> should be sorted to the corresponding non-umlaut characters
 within the index.
 
@@ -125,9 +126,7 @@ There are three kinds of tags:
 The following list shows all tags which are provided by \C<pp2html> in addition
 to the tags which are provided by the \C<PerlPoint::Parser> (like \\INCLUDE):
 
-* BOXCOLOR
-
-* BOXTEXT
+* BOXCOLORS
 
 * IMAGE
 
@@ -173,9 +172,9 @@ to the tags which are provided by the \C<PerlPoint::Parser> (like \\INCLUDE):
 \C<pp2html> supports some simple \X<character formattings> as well as line breaks.
 
 Special characters for HTML and LaTeX are escaped automatically. The following
-characters should be printed correctly by \C<pp2html> and \C<latex>:
+characters should be printed correctly by \C<pp2html> and \C<pp2latex>:
 
-Special: \X<\>>, <, &, ~, $, %, ^, _, {, }
+Special: \C<\X<\>>>, \C<\<, &, ~, $, %, ^, _, {, }>
 
 (greater than, less than, ampersand, tilde, dollar sign, percent sing, carret, underscore, curly braces)
 
@@ -246,7 +245,7 @@ possibilities of \C<pp2html>. You will see examples for
 
 ==Lists
 
-First at all a bullet list: \A{name=bullets}
+First of all a bullet list: \A{name=bullets}
 
 * Start each bullet item with an asterisk (*) at the beginning of a line.
 
@@ -296,7 +295,6 @@ The defining lines are:
  :\\I<const\>:
  this is a constant
 
-\X<1 & 1> is an internet company.
 
 ==Shift Paragraphs
 
@@ -316,7 +314,12 @@ only used to increase or decrease the level of nesting for list items.
 
 * the sub-list has been started by a > shift paragraph
 
-<
+>
+
+* another item, one level below
+
+
+<2
 
 * now we are again on level 0
 
@@ -349,20 +352,18 @@ Line breaks and indentation should not be modified.
 Blocks are typically used for showing examples and pieces of code. \C<pp2html>
 places block text in a box with colored background. The foreground and background color can be
 selected via the \C<--boxtext_color=color> and \C<--box_color=color> options or by using 
-the \\BOXTEXT\<color\> and \\BOXCOLOR\<color\> tag.
+the \\BOXCOLORS{fg=fgcolor bg=bgcolor} tag.
 
 
 Now follows a \I<verbatim> block. Note that the box color has been switched to green:
-\BOXCOLOR<green>
+\BOXCOLORS{bg=green}
 
  This is a verbatim \B<block>
- with tag - recognition; the text "block" should be printed \I<bold>
+ with tag - recognition; the text "block" should be printed \I<bold>.
 
 The effect can only be seen, however, when the \C<--boxtext_bold> option has been set to \C<OFF>.
 
-$boxcolor="red"
-\BOXCOLOR<white>
-\BOXTEXT<blue>
+\BOXCOLORS{bg=white fg=blue}
 
 <<EOT
    This block now is strictly verbatim. Note that the first
@@ -372,8 +373,7 @@ be interpreted in a special meaning but printed as they
 have been typed. This should also be true for the ampersand (&)
 EOT
 
-\BOXCOLOR<blue>
-\BOXTEXT<white>
+\BOXCOLORS{bg=blue fg=white}
 
 ==Tables
 

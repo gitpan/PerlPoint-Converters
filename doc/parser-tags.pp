@@ -12,7 +12,7 @@ A \B<tag name> is made of a backslash and a number of alphanumeric characters
 
   \\TAG
 
-B<Tag options> can be optional (see the specific tags documentation). They follow
+\B<Tag options> can be optional (see the specific tags documentation). They follow
 the tag name immediately, enclosed by a pair of corresponding curly braces. Each
 option is a simple string assignment. The value should be quoted if \C</^\\w+$/> does
 not match it. Option settings are separated by whitespace(s).
@@ -51,8 +51,6 @@ details.
 ==File inclusion
 
 It is possible to include another file by \B<\\INCLUDE{file=\<filename\> type=\<type\>}>.
-The nesting level is umlimited, but every file is \I<read only once> (to avoid confusion by
-circular nesting).
 
 The mandatory base options are
 
@@ -62,8 +60,8 @@ file   | names the source to be included (should exist)
 type   | determines how the file is handled
 
 All types different from \C<"pp"> or \C<"perl"> make the included file be read but not evaluated.
-The read contents is usually passed to the generated output file directly. This is useful
-to include target language specific, preformatted parts.
+The read contents is usually passed to the generated output file directly, with exception of type
+\C<"example">. This is useful to include target language specific, preformatted parts.
 
   \\INCLUDE<type=html file=homepage>
 
@@ -76,8 +74,42 @@ translator specific documentation for details.
 If the type of an included file is specified as \C<"PP">, the file contents is
 made part of the presentation source.
 
-In this case a special tag option \C<"headlinebase"> can be specified to define a headline
-base level used as an offset to all headlines in the included document.
+  // include PerlPoint
+  \\INCLUDE{\B<type=pp> file="nested.pp"}
+
+The nesting level is umlimited, but every
+file \I<in a nesting hierarchy> is \I<read only once> (to avoid confusion by
+circular nesting). (Including the same file multiply in different nesting
+hierarchies is possible without problems.)
+
+A PerlPoint file can be included wherever a tag is allowed, but sometimes
+it has to be arranged slightly: if you place the inclusion directive at
+the beginning of a new paragraph \I<and> your included PerlPoint starts by
+a paragraph of another type than text, you should begin the included file
+by an empty line to let the parser detect the correct paragraph type. Here
+is an example: if the inclusion directive is placed like
+
+  // include PerlPoint
+  \\INCLUDE{type=pp file="file.pp"}
+
+and \C<file.pp> immediately starts with a verbatim block like
+
+  <<VERBATIM
+      verbatim
+  VERBATIM
+
+, \I<the inclusion directive already opens a new paragraph> which is detected to
+be \I<text> (because there is no special startup character). Now in the included
+file, from the parsers point of view the included PerlPoint is simply a
+continuation of this text, because a paragraph ends with an empty line. This
+trouble can be avoided by beginning such an included file by an empty line,
+so that its first paragraph can be detected correctly.
+
+====Special option: headlinebase
+
+When including nested PerlPoint, a special tag option \C<"headlinebase"> can be
+specified to define a headline base level used as an offset to all headlines in
+the included document.
 
 <<EOE
  If "\INCLUDE{type=PP file=file headlinebase=20}" is
@@ -103,35 +135,22 @@ The \C<"headlinebase"> feature makes it easier to share partial documents with o
 or to build complex documents by including seperately maintained parts, or to include
 one and the same part at different headline levels.
 
-A PerlPoint file can be included wherever a tag is allowed, but sometimes
-it has to be arranged slightly: if you place the inclusion directive at
-the beginning of a new paragraph \I<and> your included PerlPoint starts by
-a paragraph of another type than text, you should begin the included file
-by an empty line to let the parser detect the correct paragraph type. Here
-is an example: if the inclusion directive is placed like
 
-  // include PerlPoint
-  \\INCLUDE{type=pp file="file.pp"}
+====Special option: smart
 
-and \C<file.pp> immediately starts with a verbatim block like
+Option \I<smart> commands the parser to include the file
+only unless this was already done before. This is intended for inclusion
+of pure alias/macro definition or variable assignment files.
 
-  <<VERBATIM
-      verbatim
-  VERBATIM
+ \\INCLUDE{type=PP file="common-macros.pp" \B<smart=1>}
 
-, \I<the inclusion directive already opens a new paragraph> which is detected to
-be \I<text> (because there is no special startup character). Now in the included
-file, from the parsers point of view the included PerlPoint is simply a
-continuation of this text, because a paragraph ends with an empty line. This
-trouble can be avoided by beginning such an included file by an empty line,
-so that its first paragraph can be detected correctly.
 
 ===Including Perl
 
 The second special case of inclusion is a file type of \C<"Perl">.
 
   // include PerlPoint
-  \\INCLUDE{type=perl file="dynamicPP.pl"}
+  \\INCLUDE{\B<type=perl> file="dynamicPP.pl"}
 
 \B<Inluded Perl is \I<active contents> - see the special chapter about it.>
 
@@ -141,6 +160,43 @@ is read like static PerlPoint.
 
 If the included code fails, an error message is displayed and the result is
 ignored.
+
+
+===Including Examples
+
+Included files can be declared to be examples. This makes the file placed into
+the source as a \I<verbatim block>, without need to copy its contents into the source.
+
+  // include an external script as an example
+  \\INCLUDE{\B<type=example> file=script}
+
+So, an example script of
+
+  #!perl -w
+
+  print "Geetings from outside!\\n";
+
+is made part of the source as if one had written
+
+<<EOE
+  <<EOE
+  #!perl -w
+
+  print "Greetings from outside!\n";
+  EOE
+EOE
+
+All lines of the example file are included unchanged. On request, they can be indented.
+To do so, just set the special option \C<"indent"> to a positive numerical value equal to
+the number of spaces to be inserted before each line.
+
+  // external example source, indented by 3 spaces
+  \\INCLUDE{type=example file=script \B<indent=3>}
+
+Including external scripts can accelerate PerlPoint authoring significantly,
+especially if the included files are still subject to changes.
+
+
 
 ==Embedded code
 

@@ -1,0 +1,37 @@
+This is the TODO list for PerlPoint-Converters
+==============================================
+$Date: 2001/03/06 21:21:28 $
+$Revision: 1.1 $
+
+(sorted by priority: 1 = very high, ..., 6 = very low)
+
+[2] java_script_navigation:
+    if disabled: do not create java script headers  (ok, done)
+    else: include java script code from extra file  (still open)
+
+[2] Doc: Precedence of \L  \B  \X  ...
+
+[3] Usage: tmp filename so that it will also work on Win32 platform
+
+[3] Doc: update POD Docu, update ppdoc.pp (new features)
+
+[3] Doc: patch install procedure so that PROGRAM, P_VERSION are
+    replaced before the man pages are created
+    or use a script for updating version numbers consistently in all files
+    (source should be Makefile.PL)
+
+[3] Build a reasonable test suite (./t)
+
+[3] Start thinking about XML, and PPresenter Interface
+
+[4] pp2latex: implementation of all what's already in pp2htm
+
+[4] pp2latex: Better support for templates, provide examples
+
+[4] check config file: investigate first input file. if it looks like
+    a config file (containing options from %OPT) then warn the user,
+    he might have called the file without @ (common error with ArgvFile ...)
+
+[4] Style Sheet Support
+
+

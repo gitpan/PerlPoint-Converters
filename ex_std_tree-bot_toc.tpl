@@ -1,8 +1,6 @@
-<!-- **** Bottom template with navigation items 
-  $Id: ex_std_tree-bot_toc.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp $
-  $Revision: 1.3 $
-  $Date: 2000/11/02 19:37:48 $
--->
+<!-- ---- Bottom Navigation Bar ---------------------------------- BEGIN 
+  $Id: ex_std_tree-bot_toc.tpl,v 1.4 2001/03/06 21:21:28 lorenz Exp $
+-------------------------------------------------------------------- -->
 
 <TABLE WIDTH=100%  BORDER=0 CELLSPACING=0 CELLPADDING=2>
 <TR>
@@ -26,3 +24,4 @@
 
 </TR>
 </TABLE>
+<!-- ---- Bottom Navigation Bar -------------------------------- END -->

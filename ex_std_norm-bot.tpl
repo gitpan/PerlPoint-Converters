@@ -1,8 +1,6 @@
-<!-- **** Bottom template with navigation items 
-  $Id: ex_std_norm-bot.tpl,v 1.4 2001/01/17 22:24:16 lorenz Exp $
-  $Revision: 1.4 $
-  $Date: 2001/01/17 22:24:16 $
--->
+<!-- ---- Bottom Navigation Bar ---------------------------------- BEGIN 
+  $Id: ex_std_norm-bot.tpl,v 1.5 2001/03/06 21:21:28 lorenz Exp $
+-------------------------------------------------------------------- -->
 <HR SIZE=8>
 
 </FONT>
@@ -32,3 +30,4 @@
 
 </TR>
 </TABLE>
+<!-- ---- Bottom Navigation Bar -------------------------------- END -->

@@ -1,11 +1,9 @@
 <html>
   <!--
-  $Id: ex_frm_norm-frm.tpl,v 1.5 2001/01/17 22:24:16 lorenz Exp $
-  $Revision: 1.5 $
-  $Date: 2001/01/17 22:24:16 $
+  $Id: ex_frm_norm-frm.tpl,v 1.6 2001/03/06 21:21:28 lorenz Exp $
   -->
 <head>
-  <title>The PerlPoint-Converters Package</title>
+  <title>TITLE</title>
 </head>
 
 <frameset border=1 frameborder=1 framespacing=0 rows="115, *, 70">

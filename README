@@ -1,6 +1,6 @@
 This is the README file for PerlPoint-Converters
 
-$Id: README,v 1.7 2001/01/17 22:24:16 lorenz Exp $
+$Id: README,v 1.8 2001/03/06 21:21:28 lorenz Exp $
 
 Covered topics:
 
@@ -74,25 +74,30 @@ refer to the documentation in the PerlPoint-Package from Jochen Stenzel
 
 Prerequisits
 ------------
-This version needs Perl5.005
+This version needs Perl5.005.
+Note: The fields.pm Module which comes with Perl5.005 is quite old.
+You should get the newest version from CPAN because the PerlPoint::Parser
+Module needs a newer version!
+
 The pp2html program uses the following packages which are available on CPAN
 or come with your Perl distribution:
 
   Pod::Text
   Getopt::Long
   Getopt::ArgvFile
-  PerlPoint::Parser 0.29
+  PerlPoint::Parser
   PerlPoint::Backend
   PerlPoint::Constants
   
 The TreeApplet classes are contained in the images subdirectory of this
 distribution. For more information about the TreeApplet classes refer to
-http://www.mcsoftware.com.au/java/TreeControl/treeControl.html
+http://www.naturallyj.com.
+This distribution contains an older version which was freely available.
 
 
 What's new in this version
 --------------------------
-This is version 0.008
+This is version 0.009
 
 Please refer to file "Changes".
 
@@ -108,14 +113,13 @@ Just get the PerlPoint-Converters-<release>.tar.gz file and unpack it in a temp 
   make test
   make install
 
-The main script is `pp2html'. Try `pp2html --help | less' to get more information.
-A test script `test.pl' is provided which runs the input file `ppdoc.pp'
-four times through `pp2html' using four different configuration files.
-The resulting HTML files are places in the `ex_*' subdirectories. These
-test files contain some documentation for `pp2html'.
+The main program is `pp2html'. Try `pp2html --help | less' to get more 
+information.
 
-This script is also called for `make test'.
-
+The test script `t/test_pp.t', which is invoked via `make test', runs the input 
+file `ppdoc.pp' four times through `pp2html' using four different configuration
+files.  The resulting HTML files are places in the `ex_*' subdirectories. These
+examples contain documentation for `pp2html'.
 
 Test Cases
 ----------

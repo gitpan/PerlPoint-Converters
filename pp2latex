@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2latex,v 1.7 2001/01/17 22:24:16 lorenz Exp $
-# $Revision: 1.7 $
-# $Date: 2001/01/17 22:24:16 $
+# $Id: pp2latex,v 1.9 2001/03/11 11:55:11 lorenz Exp lorenz $
+# $Revision: 1.9 $
+# $Date: 2001/03/11 11:55:11 $
 #
 # $Author: lorenz $
 #
@@ -18,7 +18,7 @@ use Data::Dumper;
 
 # pragmata
 use strict;
-use subs "flush", "push_page";
+use subs "flush", "push_page", "pp_warn";
 
 # load modules
 use Carp;
@@ -29,7 +29,8 @@ use PerlPoint::Constants;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.7 $/ =~ /(\d+)\.(\d+)/);
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.9 $/ =~ /(\d+)\.(\d+)/);
+my $PACK_VERSION = "0.009";
 
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
@@ -59,10 +60,16 @@ sub Usage {
 my %OPT = (
 
   slide_dir       => ".",
+  no_index        => 0,
 
 );
 
 argvFile( home => 1, default => 1);
+
+if (defined $ARGV[0] and $ARGV[0] =~ /-v$/){
+  @ARGV =("-version");  # to avoid ambiguities
+}
+my $verbose = 1;
 
 GetOptions( \%OPT,
 
@@ -70,6 +77,7 @@ GetOptions( \%OPT,
   "allTags",
   "cache",
   "cacheCleanup",
+  "filter=s",
   "no_index",
   "nocopyright",
   "noinfo",
@@ -86,20 +94,19 @@ GetOptions( \%OPT,
 );
 
 # propagate options as necessary
-@OPT{qw(nocopyright noinfo nowarn)}=() x 3 if exists $OPT{quiet};
+@OPT{qw(nocopyright noinfo nowarn)}=(1,1,1) if exists $OPT{quiet};
 $OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDEBUG};
 
 
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
-if (! $OPT{nocopyright}) {
-  print STDERR "This is $me version $VERSION\n";
-  print STDERR "$Date: 2001/01/17 22:24:16 $nix\n";
-  print STDERR "(c) Lorenz Domke (lorenz.domke\@mgx.de) 2001.\n\n";
-  if ($OPT{version}) {
-    exit;
-  }
-}
+print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT{quiet};
+print STDERR "$Date: 2001/03/11 11:55:11 $nix\n" unless $OPT{quiet};
+print STDERR "(c) Lorenz Domke <lorenz.domke\@mgx.de> 2001.\n\n" unless $OPT{nocopyright};
+exit if $OPT{version};
+
+
+$verbose = 0 if ($OPT{quiet});
 
 my ($li_start, $li_end);
 $li_start = "\\item ";
@@ -108,6 +115,7 @@ $li_end = "\n";
 # declare variables
 # Data Structures
 # 000000000000000
+my $embedded_latex = 0;
 
 my (@streamData, %tagHash);
 my $verbatim_flag = 0;
@@ -135,6 +143,7 @@ my $idx_cnt = 0;
 # declare list of tag openers
 # some are only needed for compatibility with pp2htm
 @tagHash{qw(
+            BOXCOLORS
             BOXCOLOR
             BOXTEXT
             IMAGE
@@ -149,6 +158,7 @@ my $idx_cnt = 0;
             I
             HR
             U
+            PRINT_TOC
             SUB
             SUP
             E
@@ -175,6 +185,7 @@ $parser->run(
              tags    => \%tagHash,
              files   => \@ARGV,
              safe    => exists $OPT{activeContents} ? $safe : undef,
+             filter  => exists $OPT{filter} ? $OPT{filter} : "perl|latex",
              activeBaseData => {
                                 targetLanguage => 'SDF',
                                 userSettings   => {map {$_=>1} exists $OPT{set} ? @{$OPT{set}} : ()},
@@ -218,11 +229,16 @@ $backend->register(DIRECTIVE_TEXT,         \&handleText);
 $backend->register(DIRECTIVE_VERBATIM ,    \&handleVerbatim);
 
 my @BUFFER;
+my @ERRBUFFER;  # buffer for context of error 
 my $box_bg_color= "blue";
 my $box_fg_color= "white";
 
 # and run it
-$backend->run(\@streamData);
+$backend->run(\@streamData,
+             display => DISPLAY_ALL
+                      + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)                                
+                      + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
+);
 
 begin_doc();
 
@@ -231,7 +247,7 @@ for (my $i = 0; $i <= $page_cnt; $i++){
   print STDERR "New Page $i: Level ",
    $PAGES[$i]->{LEVEL}, " ===> ",
    $PAGES[$i]->{HD},
-   , " <===\n";
+   , " <===\n" if $verbose;
 
   # print page body
   foreach my $line ( @{$PAGES[$i]->{BODY}} ){
@@ -256,7 +272,7 @@ for (my $i = 0; $i <= $page_cnt; $i++){
 
 }
 
-gen_index();
+gen_index() unless $OPT{no_index};
 end_doc();
 
 exit 0;
@@ -287,6 +303,8 @@ sub begin_doc{
 \parskip1ex                       % white space between chapters
 \pagestyle{headings}     %
 \usepackage{epsf}
+\usepackage{makeidx}
+
 % setup for DIN A4
 \oddsidemargin3cm
 \evensidemargin3cm
@@ -300,6 +318,7 @@ sub begin_doc{
 \textheight23cm
 \setlength{\footskip}{1.5cm}
 
+\makeindex
 
 \begin{document}
 
@@ -319,7 +338,7 @@ sub gen_index {
 # foreach my $idx (sort keys %INDEX) {
 #   print "$idx \\textbf{ \\pageref{$INDEX{$idx}}}\\\\\n";
 # }
-# print "\n\\printindex\n\n";
+  print "\n\\printindex\n\n";
 } # gen_index
 
 #----------------------------------------------------------
@@ -460,9 +479,11 @@ sub handleVerbatim { # verbatim block without TAG recognition
   flush;
   if ($_[1]==DIRECTIVE_START){
     $verbatim_flag = 1;
+#   push_page $page_ref, "\n\\rule{\\textwidth}{1pt}\n";
     push_page $page_ref, "\\begin{verbatim}\n";
   } else {
     push_page $page_ref, "\\end{verbatim}";
+#   push_page $page_ref, "\\rule{\\textwidth}{1pt}\n";
     $verbatim_flag = 0;
   }
 } # handleVerbatim
@@ -471,6 +492,32 @@ sub handleVerbatim { # verbatim block without TAG recognition
 sub handleComment {
     @BUFFER = (); # skip buffer contents
 } # handleComment
+
+#----------------------------------------------------------
+sub e_escapes{
+  my ($flag) = @_;
+  if ($flag eq "micro"){
+    return "\$\\mu\$";
+  } elsif ($flag eq "uuml"){
+    return "ü";
+  } elsif ($flag eq "Uuml"){
+    return "Ü";
+  } elsif ($flag eq "auml"){
+    return "ä";
+  } elsif ($flag eq "Auml"){
+    return "Ä";
+  } elsif ($flag eq "ouml"){
+    return "ö";
+  } elsif ($flag eq "Ouml"){
+    return "Ö";
+  } elsif ($flag eq "szlig"){
+    return "ß";
+  } elsif ($flag eq "nbsp"){
+    return "\\nolinebreak ";
+  } else {
+    return "__ this was HTML escape: $flag __";  #  --> syntax error in latex
+  }
+} # e_escapes
 
 #----------------------------------------------------------
 sub handleTag {
@@ -486,13 +533,12 @@ sub handleTag {
     }
     return;
   }
-#TODO anpassen !!
   if ($_[2] eq "E") {                                           # special HTML escapes
-    flush;
     if ($_[1]==DIRECTIVE_COMPLETE) {
-      push_page $page_ref, ";";
+      push_page $page_ref, e_escapes( "@BUFFER");
+      @BUFFER = ();
     } else {
-      push_page $page_ref, "\&";
+      flush;
     }
     return;
   }
@@ -553,6 +599,14 @@ sub handleTag {
     return;
   }
 
+  if ($_[2] eq "PRINT_TOC"){
+    flush;
+    if ($_[1]==DIRECTIVE_START){
+      push_page $page_ref, "\n\\tableofcontents\n\n\\newpage\n";
+    }
+    return;
+  }
+
   if ($_[2] eq "MBOX"){
     flush;
     if ($_[1]==DIRECTIVE_START){
@@ -566,7 +620,7 @@ sub handleTag {
   if ($_[2] eq "LINE_BREAK" or $_[2] eq "BR") {                       # line break
     if ($_[1]==DIRECTIVE_COMPLETE) {
       @BUFFER = ();
-      push_page $page_ref, "\\\\\n";
+      push_page $page_ref, "\\linebreak ";
     } else {
       flush;
     }
@@ -582,6 +636,10 @@ sub handleTag {
     }
     return;
   }
+  if ($_[2] eq "BOXCOLORS") {                                          # box color
+    return
+  }
+
   if ($_[2] eq "BOXCOLOR") {                                          # box color
     if ($_[1]==DIRECTIVE_COMPLETE) {
       $box_bg_color = $BUFFER[0];
@@ -622,7 +680,7 @@ sub handleTag {
       }
       my $ps_file = "$OPT{slide_dir}/$file";
       $ps_file =~ s/\.[^.]*$/.eps/;
-      print STDERR " ... image: $ps_file\n";
+      print STDERR " ... image: $ps_file\n" if $verbose;
       if (-e $ps_file) {
         push_page $page_ref, "\n\n\\epsffile{$ps_file}\n\n";
       } else {
@@ -653,8 +711,8 @@ sub handleTag {
 
   if ($_[2] eq "A") {                                                # Anchor Tag
     flush;
-  # print STDERR "@_\n";
-  # print STDERR Dumper($_[3]);
+  # print STDERR "@_\n" if $verbose;
+  # print STDERR Dumper($_[3]) if $verbose;
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'name'}) {
         die "*** ERROR: Anchor without 'name' parameter\n";
@@ -678,6 +736,7 @@ sub handleTag {
       my $link_text = join("",@BUFFER);
 #     my $url = $_[3]->{'url'};
       push_page $page_ref, "\\textit{$link_text}";
+      @BUFFER=();
     } else {
       flush;
     }
@@ -744,8 +803,11 @@ sub handleTag {
   if ($_[2] eq "TABLE") {                                       # TABLE
     flush;
     if ($_[1]==DIRECTIVE_START) {
-      push_page $page_ref, "\n\n\\vspace{1ex}\n\\begin{tabular}{|l|p{9cm}|r|l|}\n";
-        # nr. of cols and their layout hardcoded!!
+      my $cols = "|c|c|c|c|";
+      if ( defined $_[3]->{'columns'}) {
+         $cols = $_[3]->{'columns'};
+      }
+      push_page $page_ref, "\n\n\\vspace{1ex}\n\\begin{tabular}{$cols}\n";
     } else {
       push_page $page_ref, "\n\n\\end{tabular}\n\n";
     }
@@ -784,6 +846,23 @@ sub handleTag {
   }
 
 
+  if ($_[2] eq "EMBED") {                                       # embeded LaTeX
+    flush;
+    if ($_[1]==DIRECTIVE_START) {
+      if ( !defined $_[3]->{'lang'}) {
+        pp_warn "ERROR: EMBED without 'lang' parameter\n";
+      }
+      elsif ($_[3]->{'lang'} =~ /latex/i){
+        $embedded_latex = 1;
+      }
+    } else {
+      $embedded_latex = 0;
+    }
+    @BUFFER=();
+    return;
+  }
+
+
   warn "**** $me: unkown or not yet implemented tag: $_[2]\n";
 } # handleTag
 
@@ -802,7 +881,13 @@ sub handleDocument {
 #----------------------------------------------------------
 sub flush {
   push_page $page_ref, @BUFFER;
+  push @ERRBUFFER, @BUFFER;
   @BUFFER = ();
+  # trim ERRBUFFER:
+  @ERRBUFFER = grep (!/^\s*$/ ,@ERRBUFFER);
+  for (my $k=1;$k<scalar(@ERRBUFFER)-6;$k++){
+    shift @ERRBUFFER;
+  }
 }
 
 #----------------------------------------------------------
@@ -820,7 +905,8 @@ sub save {
 } # save
 #----------------------------------------------------------
 sub escapes {
-    my $line = shift;
+  my $line = shift;
+  return $line if $embedded_latex;
   return $line if $verbatim_flag;
   $line =~ s!\334!save('"U')!ge; #"
   $line =~ s!\374!save('"u')!ge; #"
@@ -841,7 +927,7 @@ sub escapes {
     $line =~ s!}!\\}!g;
     $line =~ s!>!{\\tt>}!g;
     $line =~ s!<!{\\tt<}!g;
-    $line =~ s!"!\\char34!g; #'
+    $line =~ s!"!{\\char34}!g; #'
     $line =~ y/\200-\377/\000-\177/;
 
     return $line;
@@ -852,6 +938,13 @@ sub insert_template {
   my ($f, $page_no, $what) = @_;
 } # insert_template
 #----------------------------------------------------------
+
+#----------------------------------------------------------
+sub pp_warn {
+  my ($message) = @_;
+  print STDERR "*** $me: $message\n";
+  print STDERR "context: ------\n@ERRBUFFER\n---------------\n";
+} # pp_warn
 
 
 __END__
@@ -866,7 +959,7 @@ B<pp2latex> - PerlPoint to LaTeX converter
 
 =head1 VERSION
 
-This manual describes version B<1.07>.
+This manual describes version B<0.009, build 1.09>.
 
 =head1 SYNOPSIS
 
@@ -888,6 +981,19 @@ There you will find everything you ever wanted to know about PerlPoint ;-)
 =head1 OPTIONS
 
 =over 4
+
+=item --filter=regexp
+
+This specifies a regular expression C<regexp> which should match
+all allowed languages for EMBEDed code. The expression is evaluated
+caseinsensitively.
+
+Example: --filter="perl|latex"
+
+=item --prolog=filename
+
+Specifies a file which must contain the LaTeX Declarations for the document.
+C<\documentclass> and C<\begin{document}> must be defined there.
 
 =item --activeContents
 
@@ -1034,6 +1140,12 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 # --------------------------------------------------------------------------
 
 $Log: pp2latex,v $
+Revision 1.9  2001/03/11 11:55:11  lorenz
+checkin for version 0.009
+
+Revision 1.8  2001/03/06 21:21:28  lorenz
+checkin for 0.009
+
 Revision 1.7  2001/01/17 22:24:16  lorenz
 checkin for version 0.008
 

@@ -1,8 +1,9 @@
+<!-- ---- Top Navigation Bar ------------------------------------- BEGIN 
+  $Id: ex_frm_norm-top.tpl,v 1.4 2001/03/06 21:21:28 lorenz Exp $
+-------------------------------------------------------------------- -->
 <!--
   *** This text is included just below the BODY line in all HTML pages
-  $Id: ex_frm_norm-top.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp $
-  $Revision: 1.3 $
-  $Date: 2000/11/02 19:37:48 $
+  $Id: ex_frm_norm-top.tpl,v 1.4 2001/03/06 21:21:28 lorenz Exp $
 -->
 
 <TABLE bgcolor="#FFFF99" WIDTH=100%  BORDER=0 CELLSPACING=0>
@@ -31,3 +32,4 @@
 </TR>
 </TABLE>
 <P>
+<!-- ---- Top Navigation Bar ------------------------------------- END -->
