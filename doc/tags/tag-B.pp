@@ -1,7 +1,9 @@
 
+// vim: set filetype=pp2html:
 
 =B
 
+\X{mode=index_only}<Tag \\B>
 The \B<\\B> tag marks text to be formatted \I<\B<b>old>.
 
 

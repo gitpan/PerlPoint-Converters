@@ -1,7 +1,9 @@
 
+// vim: set filetype=pp2html:
 
 =IMAGE
 
+\X{mode=index_only}<Tag \\IMAGE>
 The \B<\\IMAGE> tag includes an image.
 
 
@@ -40,11 +42,18 @@ These options are supported by all translators.
 \I<Additional options>
 
 Several translators may extend the set of supported options.
+\B<pp2html> allows also the following options which are passed to the corresponding
+parameters of the HTML <IMG> tag:
 
-Note: \I<If you make this document part of your translators documentation please modify
-      this section according to your implementation. For example, you may continue this
-      section by saying something like "pp2xy also handles ..." In any case, remove
-      this note.>
+:\B<alt>: Specify a textual alternative for the image.
+
+:\B<height>: Specify the height of the image
+
+:\B<width>: Specify the width of the image
+
+:\B<border>: Specify border width. A useful value is "0" to suppress the border.
+
+:\B<align>: Specify justification.
 
 
 

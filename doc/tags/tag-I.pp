@@ -1,7 +1,9 @@
 
+// vim: set filetype=pp2html:
 
 =I
 
+\X{mode=index_only}<Tag \\I>
 The \B<\\I> tag marks text to be formatted \I<\B<i>talic>.
 
 

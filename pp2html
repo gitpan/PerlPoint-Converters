@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2html,v 1.21 2001/06/16 12:37:08 lorenz Exp $
-# $Revision: 1.21 $
-# $Date: 2001/06/16 12:37:08 $
+# $Id: pp2html,v 1.22 2001/07/03 19:54:46 lorenz Exp lorenz $
+# $Revision: 1.22 $
+# $Date: 2001/07/03 19:54:46 $
 #
 # $Author: lorenz $
 #
@@ -15,7 +15,7 @@ package PerlPoint::Converter::pp2html;
 use Pod::Text;
 use Getopt::ArgvFile qw(argvFile);
 use Getopt::Long;
-#use Data::Dumper;
+use Data::Dumper;
 use Cwd;
 
 # pragmata
@@ -39,8 +39,8 @@ use PerlPoint::Parser 0.34;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.21 $/ =~ /(\d+)\.(\d+)/);
-my $PACK_VERSION = "0.10";
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.22 $/ =~ /(\d+)\.(\d+)/);
+my $PACK_VERSION = "0.11";
 $main::VERSION = $VERSION;
 
 my $nix = "";                      # for using RCS keys in Usage, ...
@@ -87,6 +87,9 @@ sub Usage {
 
 #==================================================== Parameter Loop
 
+my %OPT_MAIN;
+my %OPT_STYLE;
+
 my %OPT = (
 
   no_contents_indet => 0,
@@ -97,6 +100,7 @@ my %OPT = (
   toc_alinkcolor      => "#FF0000",
   idx_alinkcolor      => "#FF0000",
   contents_target => "Index",
+  contents_table_widht => 0,
   bgcolor         => "#FFFFFF",
   idx_bgcolor     => "#FFFFFF",
   idx_fgcolor     => "#000000",
@@ -107,14 +111,14 @@ my %OPT = (
   toc_bgcolor     => "#FFFFFF",
   toc_fgcolor     => "#000000",
   back_image      => "",
-  too_back_image  => "",
+  top_back_image  => "",
   bot_back_image  => "",
   toc_back_image  => "",
   idx_back_image  => "",
   bottom_template => "",
-  box_color       => "blue",
+  box_color       => "#E5E5E5",
   boxtext_bold    => "ON",
-  boxtext_color   => "white",
+  boxtext_color   => "#000000",
   center_headers  => 0,
   contents_header => "Contents",
   fgcolor         => "#000000",
@@ -137,6 +141,7 @@ my %OPT = (
   style_dir      => ["."],
   slide_prefix    => "slide",
   slide_suffix    => "htm",
+  start_page      => "index.htm",
   title           => "XXXXX",
   top_template    => "",
   trans_table     => "",
@@ -151,6 +156,9 @@ my %OPT = (
   base_left_txt       => "BASE_LEFT_TXT",
   base_right_txt       => "BASE_RIGHT_TXT",
   base_middle_txt      => "BASE_MIDDLE_TXT",
+  bot_left_txt       => "BOT_LEFT_TXT",
+  bot_right_txt       => "BOT_RIGHT_TXT",
+  bot_middle_txt      => "BOT_MIDDLE_TXT",
   top_left_txt         => "TOP_LEFT_TXT",
   top_right_txt        => "TOP_RIGHT_TXT",
   top_middle_txt       => "TOP_MIDDLE_TXT",
@@ -166,7 +174,7 @@ if (defined $ARGV[0] and $ARGV[0] =~ /-v$/){
 }
 my $verbose = 1;
 
-## NOTE: The comments in the GetOptions parameter list are used for
+## NOTE: The comments in the @OPTIONS parameter list are used for
 ##       creating the menues in the interactive config file editor
 ##       (which will soon be available :-)
 
@@ -248,6 +256,7 @@ my @OPTIONS = (
 
   "title=s",
   "contents_header=s",
+  "contents_table_width=s",
   "index_header=s",
 
   "style=s",
@@ -269,13 +278,20 @@ my @OPTIONS = (
   "no_index",
   "linear_mode",
   "num_headers",
+  "nonum_headers",
   "center_headers",
+
+
+  ## ------------------------- Layout2
 
   "style_sheet=s",
 
   "base_left_txt=s",
   "base_right_txt=s",
   "base_middle_txt=s",
+  "bot_left_txt=s",
+  "bot_right_txt=s",
+  "bot_middle_txt=s",
   "top_left_txt=s",
   "top_right_txt=s",
   "top_middle_txt=s",
@@ -283,6 +299,7 @@ my @OPTIONS = (
 
   ## ------------------------- Directories
 
+  "start_page=s",
   "frame_set=s",
   "frame_start=s",
 
@@ -321,59 +338,61 @@ my @OPTIONS = (
 
 ); ##----------- END OPTIONS
 
-die unless GetOptions( \%OPT,
+die unless GetOptions( \%OPT_MAIN,
    @OPTIONS
    );
 
 
 # build and configure a Safe object
 my $safe = new Safe;
-if (exists $OPT{safeOpcode}){
-  unless (grep($_ eq 'ALL', @{$OPT{safeOpcode}})) {
+if (exists $OPT_MAIN{safeOpcode}){
+  unless (grep($_ eq 'ALL', @{$OPT_MAIN{safeOpcode}})) {
      # configure compartment
-     $safe->permit(@{$OPT{safeOpcode}});
+     $safe->permit(@{$OPT_MAIN{safeOpcode}});
   } else {
      # simply flag that we want to execute active contents
      $safe=1;
   }
 }
 
-delete $OPT{safeOpcode}; # der Mohr hat seine Schuldigkeit getan!
+delete $OPT_MAIN{safeOpcode}; # der Mohr hat seine Schuldigkeit getan!
 # if we do not delete this option we will get warnings in the
 # subsequent call to GetOptions ...
 
 # propagate options as necessary
-@OPT{qw(nocopyright noinfo nowarn)}=(1,1,1) if exists $OPT{quiet};
-$OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDEBUG};
+@OPT_MAIN{qw(nocopyright noinfo nowarn)}=(1,1,1) if exists $OPT_MAIN{quiet};
+$OPT_MAIN{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT_MAIN{trace} and exists $ENV{SCRIPTDEBUG};
 
 #======================================================= Script Body
-Usage(1) if ($OPT{help});
-print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT{quiet};
-print STDERR "$Date: 2001/06/16 12:37:08 $nix\n" unless $OPT{quiet};
-print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT{nocopyright};
-exit if $OPT{version};
+Usage(1) if ($OPT_MAIN{help});
+print STDERR "This is $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n" unless $OPT_MAIN{quiet};
+print STDERR "$Date: 2001/07/03 19:54:46 $nix\n" unless $OPT_MAIN{quiet};
+print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT_MAIN{nocopyright};
+exit if $OPT_MAIN{version};
 
-$verbose = 0 if ($OPT{quiet} or $OPT{noinfo});
+$verbose = 0 if ($OPT_MAIN{quiet} or $OPT_MAIN{noinfo});
 
 # check slide dir and create it if necessary:
+# TODO test on Win9X and NT systems (problems with path names?)
 
-if ($OPT{target_dir}) {
-  $OPT{slide_dir} = $OPT{target_dir};
+if ($OPT_MAIN{target_dir}) {
+  $OPT_MAIN{slide_dir} = $OPT_MAIN{target_dir};
 }
-if (! -d $OPT{slide_dir}) {
-  print STDERR "creating slide dir $OPT{slide_dir} ...\n" if $verbose;
-  mkdir $OPT{slide_dir}, oct(755) or die "Cannot creating $OPT{slide_dir}: $!\n";
+$OPT_MAIN{slide_dir} = defined $OPT_MAIN{slide_dir} ? $OPT_MAIN{slide_dir} : ".";
+if (! -d $OPT_MAIN{slide_dir}) {
+  print STDERR "creating slide dir $OPT_MAIN{slide_dir} ...\n" if $verbose;
+  mkdir $OPT_MAIN{slide_dir}, oct(755) or die "Cannot creating $OPT_MAIN{slide_dir}: $!\n";
 }
 
-$OPT{image_dir} = $OPT{slide_dir} unless defined $OPT{image_dir};
-if(! defined $OPT{image_ref}){
-  if ($OPT{image_dir} eq $OPT{slide_dir}){
-    $OPT{image_ref} = ".";  # images are in the slides dir
+$OPT_MAIN{image_dir} = $OPT_MAIN{slide_dir} unless defined $OPT_MAIN{image_dir};
+if(! defined $OPT_MAIN{image_ref}){
+  if ($OPT_MAIN{image_dir} eq $OPT_MAIN{slide_dir}){
+    $OPT_MAIN{image_ref} = ".";  # images are in the slides dir
   } else {
-    if ( $OPT{image_dir} =~ m#^/#){
-      $OPT{image_ref} = $OPT{image_dir}; # absolute path name
+    if ( $OPT_MAIN{image_dir} =~ m#^/#){
+      $OPT_MAIN{image_ref} = $OPT_MAIN{image_dir}; # absolute path name
     } else {
-      $OPT{image_ref} = $OPT{image_dir};
+      $OPT_MAIN{image_ref} = $OPT_MAIN{image_dir};
       #### potential ERROR
 ### TODO
 ### we must figure out, where the image_dir is relative to the slide_dir !!!
@@ -381,15 +400,15 @@ if(! defined $OPT{image_ref}){
   }
 }
 
-$OPT{applet_dir} = $OPT{slide_dir}  unless defined $OPT{applet_dir};
-if(! defined $OPT{applet_ref}){
-  if ($OPT{applet_dir} eq $OPT{slide_dir}){
-    $OPT{applet_ref} = ".";  # applets are in the slides dir
+$OPT_MAIN{applet_dir} = $OPT_MAIN{slide_dir}  unless defined $OPT_MAIN{applet_dir};
+if(! defined $OPT_MAIN{applet_ref}){
+  if ($OPT_MAIN{applet_dir} eq $OPT_MAIN{slide_dir}){
+    $OPT_MAIN{applet_ref} = ".";  # applets are in the slides dir
   } else {
-    if ( $OPT{applet_dir} =~ m#^/#){
-      $OPT{applet_ref} = $OPT{applet_dir}; # absolute path name
+    if ( $OPT_MAIN{applet_dir} =~ m#^/#){
+      $OPT_MAIN{applet_ref} = $OPT_MAIN{applet_dir}; # absolute path name
     } else {
-      $OPT{applet_ref} = $OPT{applet_dir};
+      $OPT_MAIN{applet_ref} = $OPT_MAIN{applet_dir};
       #### potential ERROR
 ### TODO
 ### we must figure out, where the applet_dir is relative to the slide_dir !!!
@@ -400,11 +419,12 @@ if(! defined $OPT{applet_ref}){
 my $style_dir = ".";
 ## handle style options; in this case we must load additional
 ## options files ...
-if (defined $OPT{style}){
+if (defined $OPT_MAIN{style}){
   # try to find the style directory
-  my $style = $OPT{style};
+  print STDERR "using style $OPT_MAIN{style}\n" if $verbose;
+  my $style = $OPT_MAIN{style};
   my $found = 0;
-  foreach my $mstyle_dir (@{$OPT{style_dir}}) {
+  foreach my $mstyle_dir (@{$OPT_MAIN{style_dir}}) {
     if (-e "$mstyle_dir/$style/$style.cfg"){
       $style_dir = $mstyle_dir;
       $found = 1;
@@ -422,9 +442,14 @@ if (defined $OPT{style}){
   }
   { local @ARGV = ( "\@$style_opts" );
      argvFile();
-     die unless GetOptions( \%OPT,
+     die unless GetOptions( \%OPT_STYLE, # get new options from style
        @OPTIONS
      );
+     # merge main options into style options
+     # (main options have higher priority !!)
+
+     @OPT{ keys %OPT_STYLE } = values %OPT_STYLE if %OPT_STYLE;
+     @OPT{ keys %OPT_MAIN } = values %OPT_MAIN;
   }
   $style_dir = "$style_dir/$style";  ## used as prefix for all template files !!
 
@@ -432,14 +457,18 @@ if (defined $OPT{style}){
   opendir(STYLE, "$style_dir") or die "Can't open directory $style_dir: $!\n";
   foreach my $img (readdir(STYLE)){
     if ($img =~ /\.jpg$|\.gif$|\.png$/i) {
-      update_file("$style_dir/$img",  "$OPT{image_dir}/$img");
+      update_file("$style_dir/$img",  "$OPT_MAIN{image_dir}/$img");
     }
     if ($img =~ /\.htm$|\.html$|\.css$/i) {
-      update_file("$style_dir/$img",  "$OPT{slide_dir}/$img");
+      update_file("$style_dir/$img",  "$OPT_MAIN{slide_dir}/$img");
     }
   }
   closedir(STYLE);
 } # end --style option
+else {
+  # merge main options into %OPT
+  @OPT{ keys %OPT_MAIN } = values %OPT_MAIN;
+}
 
 if ($OPT{tree_applet}){              #--------------------- TreeApplet
   # now update tree applet files in target directory
@@ -476,6 +505,7 @@ if ($OPT{tree_applet}){              #--------------------- TreeApplet
   }
 
 } # tree_applet
+
 
 
 my $block_width = "";  # width for code block tables
@@ -622,9 +652,17 @@ if ($OPT{frame_set} ne "") {
     die "*** ERROR: frame set template $fset does not exist or is a directory!\n";
   }
   copy_file($fset, "$OPT{slide_dir}/$OPT{frame_start}");
+  copy_file($fset, "$OPT{slide_dir}/$OPT{start_page}") if $OPT{start_page};
 }
 
 my $embedded_html = 0;
+
+##
+## disable options if noxxx options are set:
+if (defined $OPT{nonum_headers}){
+  $OPT{num_headers} = 0;  # allows overwriting of style option by main option `nonum_headers'
+}
+
 
 # declare variables
 # Data Structures
@@ -760,6 +798,8 @@ if (defined $OPT{box_color}){
 if (defined $OPT{boxtext_color}){
    $box_fg_color= $OPT{boxtext_color};
 }
+my $default_box_bg_color= $box_bg_color;
+my $default_box_fg_color= $box_fg_color;
 
 my $cellpadding = 5;
 
@@ -875,6 +915,12 @@ if ($OPT{count_only}){
 
 gen_contents();
 gen_index() unless $OPT{no_index};
+if ($OPT{frame_set} eq "" and $OPT{start_page}) {
+  my $contents = $PAGES[0]->{FILENAME};
+  $contents = "$OPT{slide_dir}/$contents";
+  copy_file($contents, "$OPT{slide_dir}/$OPT{start_page}");
+}
+
 
 if ($verbose){
   print STDERR "\n       Statistics:\n";
@@ -928,6 +974,7 @@ sub create_bot_page {
 } # create_bot_page
 #----------------------------------------------------------
 sub gen_contents {
+  ($li_start, $li_end) = set_bullet();
   my $contents = $PAGES[0]->{FILENAME};
   $contents = "$OPT{slide_dir}/$contents";
   open(CTX, "> $contents") or die "Can't open contents slide $contents: $!\n";
@@ -970,7 +1017,8 @@ EOT
 EOT
 
   } else {
-    print CTX "<table width=500><tr><td>\n";
+    my $width = $OPT{contents_table_width} ? " width=$OPT{contents_table_width}" : "";
+    print CTX "<table$width><tr><td>\n";
     print CTX "<ul>\n" unless $OPT{no_contents_indent};
   }
 
@@ -997,7 +1045,14 @@ EOT
       $TREE[$level] =~ s#</SUP>##ig; 
       $TREE[$level] =~ s#</SUB>##ig; 
       $TREE[$level] =~ s#/#,#g; 
-      my $title = join('/', @TREE[1 .. $level]);
+     #my $title = join('/', @TREE[1 .. $level]);
+      my $title = "";
+      my $slash = "";
+      foreach my $ww (@TREE[1 .. $level]) {
+         $title .= "$slash$ww" if defined $ww;
+         $slash = "/";
+      }
+
       if ($OPT{frame_set}) {
         print CTX "<param name=\"item$i\" value=\"$title;book.gif,o_book.gif;$file,Data;$hd\">\n";
       } else {
@@ -1204,10 +1259,12 @@ sub gen_navigation {
       $NUM[$level]++;
       for (my $l = $prev_level; $l >= $level; $l--){
         $last = $NLAST[$l];
+        if (defined($NFIRST[$l])){ # TODO check, Problem ??
         for ($k=$NFIRST[$l]; $k<=$last; $k++){
           if ($PAGES[$k]->{LEVEL} == $l){
             $PAGES[$k] -> {LAST} = $last;
           }
+        }
         }
       }
       $first = $NFIRST[$level];
@@ -1273,7 +1330,10 @@ sub pr_navigation_table {
 sub start_new_page {
   my ($level, @BF) = @_;
   $page_cnt ++;
-  $HEADLINE_PATH[$level]=join('', @BF); # ste
+  my $headline = join('', @BF); # ste
+  # now handle special escapes:
+ #$HEADLINE_PATH[$level]=escapes($headline);
+  $HEADLINE_PATH[$level]=$headline;
   $shift_level=1;
   my $pgn = sprintf("%04d", $page_cnt);
   $PAGES[$page_cnt] = {
@@ -1291,7 +1351,14 @@ sub start_new_page {
   $page_ref = $PAGES[$page_cnt] -> {BODY};
   my $hd = $PAGES[$page_cnt] -> {HD};
   $ANCHOR{$hd} = $page_cnt; # insert anchor for this page
-  $ANCHOR{join('|', @HEADLINE_PATH[1..$level])}=$page_cnt; # ste: insert a composite anchor for this page
+ #$ANCHOR{join('|', @HEADLINE_PATH[1..$level])}=$page_cnt; # ste: insert a composite anchor for this page
+  my $gg="";
+  my $slash = "";
+  foreach my $ww(@HEADLINE_PATH[1..$level]) {
+     $gg .= "$slash$ww" if defined $ww;
+     $slash = "|";
+  }
+  $ANCHOR{$gg}=$page_cnt; # ste: insert a composite anchor for this page
   push @{$PAGES[$page_cnt]->{BODY}}, "<a name=\"$hd\">";
 
 } # start_new_page
@@ -1565,14 +1632,18 @@ sub handleTag {
     if ($_[2] eq "BOXCOLORS") {                                     # box color
     flush;
     if ($_[1]==DIRECTIVE_COMPLETE) {
-      if ( !defined $_[3]->{'fg'}  and !defined $_[3]->{'bg'}) {
-        die "*** ERROR: BOXCOLORS without 'fg' and 'bg' parameter\n";
+      if ( !defined $_[3]->{'fg'}  and !defined $_[3]->{'bg'} and !defined $_[3]->{'set'}  ) {
+        die "*** ERROR: BOXCOLORS without 'fg' or 'bg' or 'set' parameter\n";
       }
       if (defined $_[3]->{'fg'}){
         $box_fg_color = $_[3]->{'fg'};
       }
       if (defined $_[3]->{'bg'}){
         $box_bg_color = $_[3]->{'bg'};
+      }
+      if (defined $_[3]->{'set'} and $_[3]->{'set'} eq "default") {
+        $box_bg_color = $default_box_bg_color;
+        $box_fg_color = $default_box_fg_color;
       }
     }
     return;
@@ -1729,7 +1800,7 @@ sub handleTag {
   if ($_[2] eq "SECTIONREF") {                                       # section header reference
     if ($_[1]==DIRECTIVE_COMPLETE) {
       if ( !defined $_[3]->{'name'}) {
-        pp_warn "*** ERROR: PAGEREF without 'name' parameter\n";
+        pp_warn "*** ERROR: SECTIONEREF without 'name' parameter\n";
       }
       my $a_name = escapes($_[3]->{'name'});
       push_page $page_ref, "_INTERN_SECTION:$a_name:_END"; # to be replaced later ...
@@ -2066,12 +2137,14 @@ sub insert_template {
        s/<[\s\w="]*URL_DOWN[\s"]*?>/$url_down/g;
        s/TXT_DOWN/$txt_down/g;
        s/<[\s\w="]*URL_CONTENTS[\s"]*?>/$url_cont/g;
-       s/TXT_CONTENTS/$OPT{contents_header}/g;
+     # s/TXT_CONTENTS/$OPT{contents_header}/g;
        s/<[\s\w="]*URL_INDEX[\s"]*?>/$url_index/g;
-       s/TXT_INDEX/$OPT{index_header}/g;
-       s/PAGE_CNT/$page_cnt/g;
+     # s/TXT_INDEX/$OPT{index_header}/g;
+     # s/PAGE_CNT/$page_cnt/g;
        s/PAGE/$pgno/g;
-       s/TITLE/$OPT{title}/g;
+     # s/TITLE/$OPT{title}/g;
+       $_ = replace_keywords($_);
+       
 
        # variables
        s/VAR\((.+?)\)/variableValue($1, $page_no-1)/ge;
@@ -2179,7 +2252,7 @@ sub update_file { #
   # check, if update is really needed:
   return if $to eq $from;
   # copy:
-  if (! -T $from){
+  if (! -T $from){ # binary file ?
     if (-e $to){
       my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,$atime,$time2) = stat(_);
       my $time1;
@@ -2210,10 +2283,24 @@ sub replace_keywords {
   $line =~ s/BASE_LEFT_TXT/$OPT{base_left_txt}/g;
   $line =~ s/BASE_RIGHT_TXT/$OPT{base_right_txt}/g;
   $line =~ s/BASE_MIDDLE_TXT/$OPT{base_middle_txt}/g;
+  $line =~ s/BOT_LEFT_TXT/$OPT{bot_left_txt}/g;
+  $line =~ s/BOT_RIGHT_TXT/$OPT{bot_right_txt}/g;
+  $line =~ s/BOT_MIDDLE_TXT/$OPT{bot_middle_txt}/g;
   $line =~ s/TOP_LEFT_TXT/$OPT{top_left_txt}/g;
   $line =~ s/TOP_RIGHT_TXT/$OPT{top_right_txt}/g;
   $line =~ s/TOP_MIDDLE_TXT/$OPT{top_middle_txt}/g;
-  $line =~ s/LOGO_IMAGE_FILENAME/$OPT{logo_image_filename}/g;
+
+  # replace color keywords:
+  $line =~ s/BOT_BGCOLOR/$OPT{bot_bgcolor}/g;
+  $line =~ s/TOP_BGCOLOR/$OPT{top_bgcolor}/g;
+  $line =~ s/IDX_BGCOLOR/$OPT{idx_bgcolor}/g;
+  $line =~ s/TOC_BGCOLOR/$OPT{toc_bgcolor}/g;
+  $line =~ s/BOT_FGCOLOR/$OPT{bot_fgcolor}/g;
+  $line =~ s/TOP_FGCOLOR/$OPT{top_fgcolor}/g;
+  $line =~ s/IDX_FGCOLOR/$OPT{idx_fgcolor}/g;
+  $line =~ s/TOC_FGCOLOR/$OPT{toc_fgcolor}/g;
+
+  $line =~ s/LOGO_IMAGE_FILENAME/$OPT{image_ref}\/$OPT{logo_image_filename}/g;
   return $line;
 } # replace_keywords 
 
@@ -2287,7 +2374,7 @@ B<pp2html> - PerlPoint to HTML converter
 
 =head1 VERSION
 
-This manual describes version B<0.10, build 1.21>.
+This manual describes version B<0.1001, build 1.22>.
 
 =head1 SYNOPSIS
 
@@ -2602,7 +2689,7 @@ heading included in the index. The index tag is not allowed inside of a heading.
 
 Set the background and foreground color for all HTML pages. The C<idx_> and C<toc_> options
 are for the index page and table of contents respectively. The last three options set the colors
-for hyperlinks, active links and followed links. The linkcolor options can also prefixed with
+for hyperlinks, active links and followed links. The linkcolor options can also be prefixed with
 C<top>, C<bot>, C<toc> and C<idx> for example C<--toc_linkcolor white>.
 
 =item --back_image
@@ -2632,8 +2719,6 @@ Set background image for nomal slides, table of contents, index, top frame or bo
 =item --nav_top_template=filename
 
 =item --nav_bottom_template=filename
-
-=item --nav_top_template=filename
 
 Filenames for template file (in HTML format). The bottom template is appended to
 each slide. Can be used to create footers with navigation, copyright note etc.
@@ -2679,9 +2764,9 @@ templates are included:
   TOP_LEFT_TXT        text for left side in top templates, see --top_left_txt
   TOP_RIGHT_TXT       text for right side in top templates, see --top_right_txt
   TOP_MIDDLE_TXT      text for middle in top templates, see --top_middle_txt
-  BASE_LEFT_TXT       text for left side in bottom templates, see --base_left_txt
-  BASE_RIGHT_TXT      text for right side in bottom templates, see --base_right_txt
-  BASE_MIDDLE_TXT     text for middle in bottom templates, see --base_middle_txt
+  BOT_LEFT_TXT        text for left side in bottom templates, see --bot_left_txt
+  BOT_RIGHT_TXT       text for right side in bottom templates, see --bot_right_txt
+  BOT_MIDDLE_TXT      text for middle in bottom templates, see --bot_middle_txt
   LOGO_IMAGE_FILENAME text for the logo image filename in template files, 
                       see --logo_image_filename
 
@@ -2691,11 +2776,11 @@ templates are included:
 
 =item --top_middle_txt
 
-=item --base_left_txt
+=item --bot_left_txt
 
-=item --base_right_txt
+=item --bot_right_txt
 
-=item --base_middle_txt
+=item --bot_middle_txt
 
 =item --logo_image_filename
 
@@ -2751,7 +2836,7 @@ Page Headers are centered. Default is no centering.
 
 =item --contents_header=text
 
-Heading for contents page. Deafult is I<Contents>
+Heading for contents page. Default is I<Contents>
 
 =item --frame_set=filename
 
@@ -2768,6 +2853,11 @@ file in the slide_dir directory.
 This is used as the target frame in all hyperlinks to the table of contents.
 Useful for example if you have a frame set without an Index frame. In this case it
 might be usefull to set the C<--contents_target> option to "Data".
+
+=item --contents_table_width=m
+
+Specifies the width of the table used for the table of contents (unless the tree applet is uses).
+A value of 0 suppresses the width option in the HTML table.
 
 =item --index_bot=n
 
@@ -2811,8 +2901,11 @@ the level and go the the next higher section or step down to a subsection.
 
 =item --num_headers
 
-All page headers are preceeded by the chapter number (e.g. 2.2.3) which is determined
-by the position of the page and the level of its header.
+=item --nonum_headers
+
+All page headers are preceeded/not preceeded by the chapter number (e.g. 2.2.3) which is determined
+by the position of the page and the level of its header. The C<--nonum_headers> overwrites
+a previous C<num_headers> option which allows to overwrite options from predefined styles.
 
 =item --no_contents_indent
 
@@ -2872,9 +2965,9 @@ Width and height of the tree applet area.
 Codebase option for the tree applet. Default is ./
 
 
-==item --style=style_name
+=item --style=style_name
 
-==item --style_dir=style_dirname
+=item --style_dir=style_dirname
 
 Using pre-defined styles. Styles are pre-defined collections of templates and
 configuration files which are stored in a directory whose name is the name
@@ -2888,10 +2981,24 @@ C<--style> option.
 
 Examples of styles are delivered with the PerlPoint-Converters distribution.
 
+=item --style_sheet=style_sheet_name
+
+I<This option is still experimental>. It allows to specifiy a style sheet (.css) which
+will be referenced in HTML <head> tags in all slides. It is not well tested and the
+settings in the style sheet may conflict with some layout tricks used by pp2html.
+
 =item --image_dir=dirname
 
 This is the name of the image directory in the target area. All images from the style
 directory and from the PerlPoint source are copied to this location.
+
+=item start_page=filename
+
+The default for this option is "index.htm". The table of contents slide or the frame set start page
+is copied to this filename unless the \C<--start_page> option is set to the empty string.
+This is useful for web pages because most browsers automatically open the "index.htm" if it exists.
+For example, if you have installed your document or presentation at "http://somewhere.net/Example",
+a web browser will automatically open the first page of your document if the browser is directed to this URL.
 
 =item --trans_table=filename
 
@@ -2917,7 +3024,7 @@ specifed as octal numbers as in the folowing example:
 =item --activeContents
 
 PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
-reasons of security this feature is deactivated by default. Set this option to active
+reasons of security this feature is deactivated by default. Set this option to activate
 it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
 
 =item --cache
@@ -2948,11 +3055,11 @@ caseinsensitively.
 
 Example: --filter="perl|html"
 
-=item -nocopyright
+=item --nocopyright
 
 suppresses the copyright message;
 
-=item -noinfo
+=item --noinfo
 
 supresses runtime informations;
 
@@ -2969,7 +3076,7 @@ a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messa
 If this option is set, only a counter will indicate that slides are created. Otherwise 
 for all slides the full header is printed while generating the slides.
 
-=item --safeOpcode <opcode>
+=item --safeOpcode=opcode
 
 If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
 evaluated. To keep security this is done via an object of class B<Safe> which restricts code
@@ -2989,7 +3096,7 @@ For the examples used in I<ppdoc.pp> you should use
  --safeOpcode=:filesys_open --safeOpcode=:still_to_be_decided --safeOpcode=:browse
 
 
-=item --set <flag>
+=item --set=flag
 
 This option allows you to pass certain settings - of your choice - to active contents
 (like conditions) where it can be accessed via the $PerlPoint hash reference. For
@@ -3001,14 +3108,16 @@ example, your PerlPoint code could contain a condition like
 
   ? 1
 
-. The special part enclosed by the two conditions would then be processed I<only> if you
+The special part enclosed by the two conditions would then be processed I<only> if you
 call C<pp2html> with
 
   --set special
 
-- and if active contents was enabled by I<-active>, of course.
+and if active contents was enabled by I<-active>, of course.
 
 This option can be used multiply.
+
+=cut
 
 =item --trace [<level>]
 
@@ -3122,6 +3231,12 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 # --------------------------------------------------------------------------
 
 $Log: pp2html,v $
+Revision 1.22  2001/07/03 19:54:46  lorenz
+Bullet bug fixed;
+\BOXCOLORS can now have the option set=default;
+ Now the main options overwrite style options;
+expand HTML escapes also in Page Headers
+
 Revision 1.21  2001/06/16 12:37:08  lorenz
 0.10 final6; always update textfiles (KEYWORDS ...)
 

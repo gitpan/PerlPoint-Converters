@@ -1,7 +1,9 @@
 
+// vim: set filetype=pp2html:
 
 =C
 
+\X{mode=index_only}<Tag \\C>
 The \B<\\C> tag marks text to be \I<\B<c>ode>.
 
 

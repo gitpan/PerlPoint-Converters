@@ -3,11 +3,11 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 
 # the package requires modern perl
-require 5.005;
+require 5.005_03;
 
 $ok=WriteMakefile(
     'NAME'	=> 'PerlPoint-Converters',
-    'VERSION' => '0.10',
+    'VERSION' => '0.11',
      PREREQ_PM     => {
                          PerlPoint::Parser => 0.34,
                          Getopt::ArgvFile => 1.01,
@@ -19,7 +19,10 @@ $ok=WriteMakefile(
     EXE_FILES      => [
                          "pp2html", "pp2latex"
                       ],
-   clean => {FILES => "orange_slides big_blue pp_book ex_std_norm ex_std_tree ex_frm_norm ex_frm_tree t/slide*.htm .*.ppcache"},
+   clean => {FILES => "orange_slides big_blue pp_book ex_std_norm ex_std_tree ex_frm_norm ex_frm_tree " .
+                      "t/slide*.htm .*.ppcache" .
+                      " *.aux *.dvi *.tex *.ilg ppdoc.ps"
+                      },
 );
 
 

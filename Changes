@@ -1,5 +1,22 @@
 Revision history for PerlPoint-Converters.
 
+Version 0.11   xx/xx/2001
+-  Bullet bug fixed: When there was no bullet list in the PerlPoint input file
+   then in the table of contents all bullets were standard HTML <LI> tags even
+   if bullet images had been specified.
+-  minor help text bug fixed (==item --> =item)
+-  \BOXCOLORS can now have the option set=default which restores box_bg_color and
+   box_fg_color to their original values (which had been set by options ...)
+-  Evaluation of style and main options: Now the main options overwrite options from
+   style directories.
+-  edit_cfg.pl script added
+-  replace LOGO_IMAG_FILENAME with $OPT{image_ref}/$OPT{logo_image_filename}
+-  use reasonalble defaults for  TOP_RIGHT_TXT etc. in styles. They can now be
+   overwritten by main options.
+-  expand HTML escapes also in Page Headers (e. g. E<uuml>)
+-  --start_page=filename option (default: index.htm)
+-  new keywords for Templates to be replaced: TOP_BGCOLOR, BOT_BGCOLOR, ...
+
 Version 0.10   06/16/2001
 -  Nested tags bug fixed: it was not possible to use \I, \C inside 
    a link \L tag.

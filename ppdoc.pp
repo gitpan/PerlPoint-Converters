@@ -1,7 +1,7 @@
 // vim: set filetype=pp2html : 
 // Comment: ppdoc.pp: documentation and testfile for pp2html
 //
-// $Id: ppdoc.pp,v 1.11 2001/06/15 15:56:02 lorenz Exp $
+// $Id: ppdoc.pp,v 1.11 2001/06/15 15:56:02 lorenz Exp lorenz $
 // $Revision: 1.11 $
 // $Date: 2001/06/15 15:56:02 $
  
@@ -264,8 +264,9 @@ First of all a bullet list: \A{name=bullets}
 * Each bullet must be followed by a blank line.
 
 * Very long bullet items can be written
-on several consecutive lines but note: the following lines
-must not start with a blank!
+on several consecutive lines. Note: the following lines
+  may or may not start with a blank but after each item there must be a
+  blank line!
 
 * The list is closed when another paragraph type or list type follows.
 
@@ -276,8 +277,9 @@ The above bullet list has been created by the following lines:
  * Each bullet must be followed by a blank line.
 
  * Very long bullet items can be written
- on several consecutive lines but note: the following lines
- must not start with a blank!
+ on several consecutive lines. Note: the following lines
+   may or may not start with a blank but after each item there must be a
+   blank line!
 
  * The list is closed when another paragraph type or list type follows.
 
@@ -408,6 +410,8 @@ The above table was produced by
  NT     , no
 EOT
 
+\BOXCOLORS{set=default}
+
 There is also a \X<\\TABLE> tag which allows to set different parameters like
 \I<border width> or \I<background color>. The following tables are created with this tag:
 
@@ -444,8 +448,8 @@ it is necessary to place a \C<\X<label>> or \C<anchor> at the postition
 where the link should aim to.
 
 On this page an \X<anchor> has been placed right here:
-\A{name="anker_1"} Of course this anchor is not visible. Anchors are
-stated in the form \\A\{name=anker_name\}.
+\A{name="anchor_1"} Of course this anchor is not visible. Anchors are
+stated in the form \\A{name=anchor_name}.
 
 There are three sorts of internal references:
 
@@ -532,6 +536,15 @@ and \C<doc/doc-functions.pp>.
 $AUTHOR=J. Stenzel
 
 \INCLUDE{type=PP file="doc/tagdoc-example.pp"}
+
+=Parser FAQ
+
+The following pages are the PARSER FAQ.
+They have been created by inlcuding the \C<parser-faq.pp> file:
+
+  \\INCLUDE{type=PP file="doc/parser-faq.pp"}
+
+\INCLUDE{type=PP file="doc/parser-faq.pp"}
 
 $AUTHOR=L. Domke
 

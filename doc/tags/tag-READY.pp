@@ -1,7 +1,9 @@
 
+// vim: set filetype=pp2html:
 
 =READY
 
+\X{mode=index_only}<Tag \\READY>
 The \B<\\READY> tag instructs PerlPoint to ignore remaining parts of a document.
 
 

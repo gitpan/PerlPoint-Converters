@@ -7,9 +7,9 @@
 <TABLE> 
 <TR>
   <TD colspan=3 >
-    Weiter: <a href="URL_NEXT">TXT_NEXT</a>
-    &nbsp;&nbsp;Zur&uuml;ck: <a href="URL_PREV">TXT_PREV</a>
-     &nbsp;&nbsp;Inhalt: <a href="URL_CONTENTS">TXT_CONTENTS</a>
+    Next: <a href="URL_NEXT">TXT_NEXT</a>
+    &nbsp;&nbsp;Previous: <a href="URL_PREV">TXT_PREV</a>
+     &nbsp;&nbsp;Contents: <a href="URL_CONTENTS">TXT_CONTENTS</a>
   </td>
 </TR>
 </TABLE>
