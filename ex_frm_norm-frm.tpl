@@ -1,8 +1,8 @@
 <html>
   <!--
-  $Id: ex_frm_norm-frm.tpl,v 1.4 2000/12/10 22:48:37 lorenz Exp lorenz $
-  $Revision: 1.4 $
-  $Date: 2000/12/10 22:48:37 $
+  $Id: ex_frm_norm-frm.tpl,v 1.5 2001/01/17 22:24:16 lorenz Exp $
+  $Revision: 1.5 $
+  $Date: 2001/01/17 22:24:16 $
   -->
 <head>
   <title>The PerlPoint-Converters Package</title>

@@ -3,13 +3,13 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 
 # the package requires modern perl
-require 5.006;
+require 5.005;
 
 $ok=WriteMakefile(
     'NAME'	=> 'PerlPoint-Converters',
-    'VERSION' => '0.007', # finds $VERSION
+    'VERSION' => '0.008',
      PREREQ_PM     => {
-                         PerlPoint::Parser => 0.27,
+                         PerlPoint::Parser => 0.29,
                          Getopt::ArgvFile => 1.01,
                       },
     dist           => {

@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2html,v 1.9 2000/12/10 22:48:37 lorenz Exp $
-# $Revision: 1.9 $
-# $Date: 2000/12/10 22:48:37 $
+# $Id: pp2html,v 1.10 2001/01/17 22:24:16 lorenz Exp $
+# $Revision: 1.10 $
+# $Date: 2001/01/17 22:24:16 $
 #
 # $Author: lorenz $
 #
@@ -30,7 +30,7 @@ use PerlPoint::Constants;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.9 $/ =~ /(\d+)\.(\d+)/);
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.10 $/ =~ /(\d+)\.(\d+)/);
 
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
@@ -57,85 +57,111 @@ sub Usage {
 #==================================================== Parameter Loop
 
 my %OPT = (
+
+  alinkcolor      => "#FF0000",
+  bgcolor         => "#FFFFFF",
+  bottom_template => "",
+  box_color       => "blue",
+  boxtext_bold    => "ON",
+  boxtext_color   => "white",
+  bullet          => "<LI>",
+  center_headers  => 0,
+  contents_header => "Contents",
+  fgcolor         => "#000000",
   frame_set       => "",
   frame_start     => "frame_set.html",
-  bgcolor         => "#FFFFFF",
-  boxtext_bold    => "ON",
-  title           => "XXXXX",
-  contents_header => "Contents",
+  index_bot       => 2,
+  index_dat       => 1,
   index_header    => "Index",
   index_top       => 0,
-  index_dat       => 1,
-  index_bot       => 2,
-  bullet          => "<LI>",
-  safe_opcodes    => ":default",
+  java_script_navigation  => 1,
+  linear_mode     => 0,
+  linkcolor       => "#0000CC",
+  no_index        => 0,
   slide_dir       => ".",
   slide_prefix    => "slide",
   slide_suffix    => "htm",
-  box_color    => "blue",
-  boxtext_color    => "white",
-  center_headers  => 0,
-  java_script_navigation  => 1,
-  linear_mode     => 0,
-  no_index        => 0,
-  tree_applet     => 0,
-  tree_app_width  => 250,
-  tree_app_height => 500,
-  tree_base => "./",
+  title           => "XXXXX",
   top_template    => "",
-  bottom_template => "",
+  tree_app_height => 500,
+  tree_app_width  => 250,
+  tree_applet     => 0,
+  tree_base       => "./",
+  vlinkcolor      => "#AAAAAA",
+
 );
 
 argvFile( home => 1, default => 1);
 
-GetOptions(
+GetOptions( \%OPT,
 
-  "bgcolor=s",                   \$OPT{bgcolor},
-  "block_indent=i",              \$OPT{block_indent},
-  "bottom_idx_template=s",       \$OPT{bottom_idx_template},
-  "bottom_template=s",           \$OPT{bottom_template},
-  "bottom_toc_template=s",       \$OPT{bottom_toc_template},
-  "boxtext_bold=s",              \$OPT{boxtext_bold},
-  "box_color=s",                 \$OPT{box_color},
-  "boxtext_color=s",             \$OPT{boxtext_color},
-  "bullet=s",                    \$OPT{bullet},
-  "center_headers",              \$OPT{center_headers},
-  "contents_header=s",           \$OPT{contents_header},
-  "debug",                       \$OPT{debug},
-  "frame_set=s",                 \$OPT{frame_set},
-  "frame_start=s",               \$OPT{frame_start},
-  "help",                        \$OPT{help},
-  "index_bot=s",                 \$OPT{index_bot},
-  "index_dat=s",                 \$OPT{index_dat},
-  "index_header=s",              \$OPT{index_header},
-  "index_top=s",                 \$OPT{index_top},
-  "java_script_navigation=s",    \$OPT{java_script_navigation},
-  "linear_mode",                 \$OPT{linear_mode},
-  "nav_template=s",              \$OPT{nav_template},
-  "num_headers",                 \$OPT{num_headers},
-  "no_index",                    \$OPT{no_index},
-  "safe_opcodes=s",              \$OPT{safe_opcodes},
-  "slide_dir=s",                 \$OPT{slide_dir},
-  "slide_prefix=s",              \$OPT{slide_prefix},
-  "slide_suffix=s",              \$OPT{slide_suffix},
-  "title=s",                     \$OPT{title},
-  "top_idx_template=s",          \$OPT{top_idx_template},
-  "top_template=s",              \$OPT{top_template},
-  "top_toc_template=s",          \$OPT{top_toc_template},
-  "tree_app_height=s",           \$OPT{tree_app_height},
-  "tree_app_width=s",            \$OPT{tree_app_width},
-  "tree_applet",                 \$OPT{tree_applet},
-  "tree_base=s",                 \$OPT{tree_base},
-  "version",                     \$OPT{version},
+  "activeContents",
+  "alinkcolor=s", 
+  "allTags",
+  "bgcolor=s",
+  "block_indent=i",
+  "bottom_idx_template=s",
+  "bottom_template=s",
+  "bottom_toc_template=s",
+  "box_color=s",
+  "boxtext_bold=s",
+  "boxtext_color=s",
+  "bullet=s",
+  "cache",
+  "cacheCleanup",
+  "center_headers",
+  "contents_header=s",
+  "debug",
+  "fgcolor=s",
+  "frame_set=s",
+  "frame_start=s",
+  "help",
+  "index_bot=s",
+  "index_dat=s",
+  "index_header=s",
+  "index_top=s",
+  "java_script_navigation=s",
+  "linear_mode",
+  "linkcolor=s",
+  "nav_template=s",
+  "no_index",
+  "nocopyright",
+  "noinfo",
+  "nowarn",
+  "num_headers",
+  "quiet",
+  "safeOpcode=s@",
+  "set=s@",
+  "slide_dir=s",
+  "slide_prefix=s",
+  "slide_suffix=s",
+  "title=s",
+  "top_idx_template=s",
+  "top_template=s",
+  "top_toc_template=s",
+  "trace:i",
+  "tree_app_height=s",
+  "tree_app_width=s",
+  "tree_applet",
+  "tree_base=s",
+  "version",
+  "vlinkcolor=s",
 
 );
 
+# propagate options as necessary
+@OPT{qw(nocopyright noinfo nowarn)}=() x 3 if exists $OPT{quiet};
+$OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDEBUG};
+
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
-print "This is $me version $VERSION\n";
-print "$Date: 2000/12/10 22:48:37 $nix\n\n";
-if ($OPT{version}) {
-  exit;
+if (! $OPT{nocopyright}) {
+  print STDERR "This is $me version $VERSION\n";
+  print STDERR "$Date: 2001/01/17 22:24:16 $nix\n";
+  print STDERR "(c) Lorenz Domke (lorenz.domke\@mgx.de) 2001.\n\n";
+  if ($OPT{version}) {
+    exit;
+  }
 }
 
 # check slide dir and create it if necessary:
@@ -264,9 +290,9 @@ if ($OPT{center_headers}){
             BOXTEXT
             IMAGE
             A
-            C
             B
             I
+            C
             SUP
             SUB
             MBOX
@@ -283,23 +309,38 @@ if ($OPT{center_headers}){
             BR
            )
          }=();
+$tagHash{'\ACCEPT_ALL'}=1 if exists $OPT{allTags};
 
 # build parser
 my ($parser)=new PerlPoint::Parser;
 
+# build and configure a Safe object
+my $safe = new Safe;
+$safe->permit(@{$OPT{safeOpcode}}) if exists $OPT{safeOpcode};
+
 # and call it
-my $compartment = new Safe;
-$compartment->permit( split(" ", $OPT{safe_opcodes}) );
-#$compartment->permit(qw(:filesys_open :still_to_be_decided :browse));
-#$compartment->permit(qw(:default :base_core :base_mem :subprocess :still_to_be_decided :filesys_open :browse));
 $parser->run(
              stream  => \@streamData,
              tags    => \%tagHash,
              files   => \@ARGV,
-             safe    => $compartment,
-             trace   => TRACE_NOTHING,
-             display => DISPLAY_ALL,
-            );
+             safe    => exists $OPT{activeContents} ? $safe : undef,
+             activeBaseData => {
+                                targetLanguage => 'SDF',
+                                userSettings   => {map {$_=>1} exists $OPT{set} ? @{$OPT{set}} : ()},
+                               },
+             vispro  => 1,
+             trace   => TRACE_NOTHING
+                      + ((exists $OPT{trace} and $OPT{trace} &  1) ? TRACE_PARAGRAPHS : 0) 
+                      + ((exists $OPT{trace} and $OPT{trace} &  2) ? TRACE_LEXER      : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} &  4) ? TRACE_PARSER     : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} &  8) ? TRACE_SEMANTIC   : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} & 16) ? TRACE_ACTIVE     : 0),
+             display => DISPLAY_ALL
+                      + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)                                
+                      + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
+             cache   => (exists $OPT{cache} ? CACHE_ON : CACHE_OFF)
+                      + (exists $OPT{cacheCleanup} ? CACHE_CLEANUP : 0),
+            ) or exit 1;
 
 # build a backend
 my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_NOTHING);
@@ -1051,7 +1092,12 @@ sub handleTag {
       my $link_text = join("",@BUFFER);
       my $url = $_[3]->{'url'};
         @BUFFER = ();
-      push_page $page_ref, "<A HREF=\"$url\">$link_text</A>";
+     my $target = "";
+     if (defined $_[3]->{target}){
+       $target = $_[3]->{target};
+       $target = " target=\"$target\"";
+     }
+      push_page $page_ref, "<A HREF=\"$url\"$target>$link_text</A>";
     } else {
       flush;
     }
@@ -1284,9 +1330,14 @@ sub escapes {
 sub insert_template {
   my ($f, $page_no, $what, $bgcolor, $no_tpl) = @_;
 
+  my $fgcolor=$OPT{fgcolor};
+  my $linkcolor=$OPT{linkcolor};
+  my $vlinkcolor=$OPT{vlinkcolor};
+  my $alinkcolor=$OPT{alinkcolor};
   my $tpl = "";
   if ($what eq "top" or $what eq "top_idx" or 
-    $what eq "nav" or $what eq "top_toc"){
+  # $what eq "nav" or 
+    $what eq "top_toc"){
     $tpl = $OPT{$what."_template"};
     print $f <<"EOT";
 <HTML>
@@ -1300,10 +1351,12 @@ EOT
 </TITLE>
 </HEAD>
 <!-- *************************************************** -->
-<BODY bgcolor="$bgcolor">
+<BODY bgcolor="$bgcolor" text="$fgcolor" link="$linkcolor" vlink="$vlinkcolor" alink="$alinkcolor">
 EOT
   }
-  elsif ($what eq "bottom" or $what eq "bottom_idx" or $what eq "bottom_toc"){
+  elsif ($what eq "bottom" or $what eq "bottom_idx" or
+    $what eq "nav" or 
+     $what eq "bottom_toc"){
     $tpl = $OPT{$what."_template"};
   }
 
@@ -1449,11 +1502,11 @@ __END__
 
 =head1 NAME
 
-B<pp2html> - simple slide generator
+B<pp2html> - PerlPoint to HTML converter
 
 =head1 VERSION
 
-This manual describes version B<1.09>.
+This manual describes version B<1.10>.
 
 =head1 SYNOPSIS
 
@@ -1464,7 +1517,7 @@ This manual describes version B<1.09>.
 
 C<pp2html> creates a set of HTML files for a foilset based on
 a simple textfile F<slide_text>. Due to its formatting features and
-the capability of creating navigation, contents and index pages,
+the capability of creating navigation, table of contents and index pages,
 C<pp2html> is also a suitable tool for writing online documentation.
 
 A slide is normally made up by
@@ -1526,9 +1579,13 @@ For more information see: http://www.mcsoftware.com.au/java/TreeControl/treeCont
 The following documentation describes in detail the syntax of a
 pp2html input file and all options of C<pp2html>.
 
-=head1 SYNTAX of pp2html Files
+=head1 SYNTAX of PerlPoint Files
 
-The format for the C<pp2html> input files is called C<PerlPoint>-Format (perl point format).
+The format for the C<pp2html> input files is called C<PerlPoint>-Format.
+For a detailed and possibly more up-to-date description of the
+C<PerlPoint> language please refer to the excellent POD documentation of
+the B<PerlPoint::Parser> Module by Jochen Stenzel.
+
 There are the following main components of an input file for C<pp2html>:
 
 =over 4
@@ -1753,7 +1810,7 @@ Filename for bottom template file (in HTML format) which is appended to
 each slide. Can be used to create footers with navigation, copyright note etc.
 The top template is inserted at the top of each slide.
 
-The _idx_ templates are used for the index slide and the _toc_ templates are used
+The C<_idx_> templates are used for the index slide and the C<_toc_> templates are used
 for the table of contents slide.
 
 The following keywords are substituted with corresponding values when the
@@ -1899,22 +1956,108 @@ Width and height of the tree applet area.
 
 Codebase option for the tree applet. Default is ./
 
-=item --safe_opcodes
+=item --activeContents
 
-Specify opcodes for the C<Safe> environment (see the Opcodes module documentation).
-Default is ":default"
-For the examples use in I<ppdoc.pp> you should use
+PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
+reasons of security this feature is deactivated by default. Set this option to active
+it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
 
- --safe_opcodes=":filesys_open :still_to_be_decided :browse"
+=item --allTags
 
+C<pp2html> implements the PerlPoint tags I<B>, I<C>, I<E>, I<I> and I<IMAGE>. Because every
+PerlPoint translator can define its own tags it may happen that a source file containes
+more than these. If they do not pass translation try this option which makes I<all> tags
+accepted. I<This is still an experimental feature.>
+
+=item --cache
+
+parsing of one and the same document several times can be accelerated by activating the
+PerlPoint parser cache by this option. The performance boost depends on your document
+structure.
+
+Cache files are written besides the source and named ".<source file>.ppcache".
+
+It can be useful to (temporarily) deactivate the cache to get correct line numbers in
+parser error messages (currently numbers cannot always reported correctly with activated
+cache because of a special perl behaviour).
+
+=item --cacheCleanup
+
+PerlPoint parser cache files grow (with every modified version of a source parsed)
+because they store expressions for every parsed variant of a paragraph. This is usually
+uncritical but you may wish to clean up the cache occasionally. Use this option to
+perform the task (or remove the cache file manually).
+
+
+=item -nocopyright
+
+suppresses the copyright message;
+
+=item -noinfo
+
+supresses runtime informations;
+
+=item --nowarn
+
+supresses warnings;
+
+=item --quiet
+
+a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messages are suppressed;
+
+=item --safeOpcode <opcode>
+
+If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
+evaluated. To keep security this is done via an object of class B<Safe> which restricts code
+to permitted operations. By this option you can declare which opcode (or opcode tag) is
+permitted. Please see the B<Safe> and B<Opcode> manual pages for further details. (These modules
+come with perl.)
+
+This option can be used multiply.
+
+You may want to store these options in default option files, see below for details.
+
+
+For the examples used in I<ppdoc.pp> you should use
+
+ --safeOpcode=:filesys_open --safeOpcode=:still_to_be_decided --safeOpcode=:browse
+
+
+=item --set <flag>
+
+This option allows you to pass certain settings - of your choice - to active contents
+(like conditions) where it can be accessed via the $PerlPoint hash reference. For
+example, your PerlPoint code could contain a condition like
+
+  ? $PerlPoint->{userSettings}{special}
+
+  Special part.
+
+  ? 1
+
+. The special part enclosed by the two conditions would then be processed I<only> if you
+call C<pp2html> with
+
+  --set special
+
+- and if active contents was enabled by I<-active>, of course.
+
+This option can be used multiply.
+
+=item --trace [<level>]
+
+activates traces of the specified level. You may use the environment variable SCRIPTDEBUG
+alternatively (but an option overwrites environment settings). The following levels are
+defined  (use the I<numeric> values) - if a description sounds cryptic to you, just ignore
+the setting:
 
 =item --help
 
-Print this manual page
+Print this manual page.
 
 =item --version
 
-Print version inforamtion and exit
+Print version inforamtion and exit.
 
 =back
 
@@ -1925,6 +2068,18 @@ Template files for header and footer section.
 Configuration file $HOME/.pp2html
 
 =head1 ENVIRONMENT
+
+The following environment variables have influence on the program:
+
+=over 4
+
+=item SCRIPTDEBUG
+
+may be set to a numeric value to activate certain trace levels. You can use option I<-trace>
+alternatively (note that a used option overwrites an environment setting). The several levels
+are described with this option.
+
+=back
 
 =head1 NOTES
 
@@ -1938,9 +2093,7 @@ C<pp2latex>
 
 =head1 AUTHOR
 
-Jochen Stenzel (perl@jochen-stenzel.de), 
-Lorenz Domke (lorenz.domke@gmx.de),
-2000. All rights reserved.
+Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 
 =cut
 
@@ -1955,6 +2108,9 @@ Lorenz Domke (lorenz.domke@gmx.de),
 # --------------------------------------------------------------------------
 
 $Log: pp2html,v $
+Revision 1.10  2001/01/17 22:24:16  lorenz
+checkin for version 0.008
+
 Revision 1.9  2000/12/10 22:48:37  lorenz
 check in for firest CPAN version
 

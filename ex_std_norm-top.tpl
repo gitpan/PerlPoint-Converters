@@ -1,9 +1,10 @@
 <!--
   *** This text is included just below the BODY line in all HTML pages
-  $Id: ex_std_norm-top.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp lorenz $
-  $Revision: 1.3 $
-  $Date: 2000/11/02 19:37:48 $
+  $Id: ex_std_norm-top.tpl,v 1.4 2001/01/17 22:24:16 lorenz Exp $
+  $Revision: 1.4 $
+  $Date: 2001/01/17 22:24:16 $
 -->
+<FONT SIZE=+6>
 
 <TABLE bgcolor="#FFFF99" WIDTH=100%  BORDER=0 CELLSPACING=0>
 <TR>
@@ -11,7 +12,7 @@
      <a href="http://www.perlworkshop.de"><img src="../images/karawane-50.gif" border=0></a>
   </TD>
   <TD align=center bgcolor="#FFFF99">
-     <FONT SIZE=+2><B>
+     <FONT SIZE=+2 color=black><B>
        TITLE
      </B></FONT>
   </TD>

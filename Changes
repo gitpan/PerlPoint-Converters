@@ -1,5 +1,23 @@
 Revision history for PerlPoint-Converters.
 
+Version 0.008   01/17/2001
+-  REAME updated (Introduction and About PerlPoint-Converters)
+-  ppdoc.pp Dokumentation updated
+-  Requires PerlPoint::Parser 0.29, and hence perl5.00503
+   (Some earlier versions of the PerlPoint-Package needed perl5.6.0)
+-  changes to pp2html:
+   o  Parameters for fgcolor, linkcolor, vlinkcolor, alinkcolor
+   o  Parameters for cache usage: --cache, --cacheCleanup
+   o  .cfg files adapted to new options
+-  changes to pp2latex
+   o  POD Docu updated
+   o  --slide_dir parameter to be compatible with pp2html
+   o  --no_index
+   o  Parameters for cache usage: --cache, --cacheCleanup
+   o  no formatting in \verbatim blocks
+   o  bugfix: version message now goes to STDERR
+
+
 Version 0.007   12/10/2000
 -  First version vor CPAN
 -  Name of the package changed from `pp2xx' to `PerlPoint-Converters'.

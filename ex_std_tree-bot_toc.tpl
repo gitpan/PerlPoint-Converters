@@ -1,5 +1,5 @@
 <!-- **** Bottom template with navigation items 
-  $Id: ex_std_tree-bot_toc.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp lorenz $
+  $Id: ex_std_tree-bot_toc.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp $
   $Revision: 1.3 $
   $Date: 2000/11/02 19:37:48 $
 -->

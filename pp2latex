@@ -1,8 +1,8 @@
 #!/usr/local/bin/perl -w
 #
-# $Id: pp2latex,v 1.6 2000/12/10 22:48:37 lorenz Exp $
-# $Revision: 1.6 $
-# $Date: 2000/12/10 22:48:37 $
+# $Id: pp2latex,v 1.7 2001/01/17 22:24:16 lorenz Exp $
+# $Revision: 1.7 $
+# $Date: 2001/01/17 22:24:16 $
 #
 # $Author: lorenz $
 #
@@ -24,15 +24,16 @@ use subs "flush", "push_page";
 use Carp;
 use Safe;
 use PerlPoint::Backend;
-use PerlPoint::Parser 0.21;
+use PerlPoint::Parser 0.29;
 use PerlPoint::Constants;
 
 (my $me = $0) =~ s#.*/##;
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.6 $/ =~ /(\d+)\.(\d+)/);
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.7 $/ =~ /(\d+)\.(\d+)/);
 
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
+
 
 #============================================================= Usage
 
@@ -56,25 +57,50 @@ sub Usage {
 #==================================================== Parameter Loop
 
 my %OPT = (
-  boxtext_bold => "ON",
+
+  slide_dir       => ".",
+
 );
 
 argvFile( home => 1, default => 1);
 
-GetOptions(
-  "prolog=s",                       \$OPT{prolog},
-  "boxtext_bold=s",              \$OPT{boxtext_bold},
-  "help",                        \$OPT{help},
-  "version",                     \$OPT{version},
+GetOptions( \%OPT,
+
+  "activeContents",
+  "allTags",
+  "cache",
+  "cacheCleanup",
+  "no_index",
+  "nocopyright",
+  "noinfo",
+  "nowarn",
+  "quiet",
+  "safeOpcode=s@",
+  "set=s@",
+  "slide_dir=s",
+  "trace:i",
+  "prolog=s",
+  "help",
+  "version",
+
 );
+
+# propagate options as necessary
+@OPT{qw(nocopyright noinfo nowarn)}=() x 3 if exists $OPT{quiet};
+$OPT{trace}=$ENV{SCRIPTDEBUG} if not exists $OPT{trace} and exists $ENV{SCRIPTDEBUG};
+
 
 #======================================================= Script Body
 Usage(1) if ($OPT{help});
-print "This is $me version $VERSION\n";
-print "$Date: 2000/12/10 22:48:37 $nix\n\n";
-if ($OPT{version}) {
-  exit;
+if (! $OPT{nocopyright}) {
+  print STDERR "This is $me version $VERSION\n";
+  print STDERR "$Date: 2001/01/17 22:24:16 $nix\n";
+  print STDERR "(c) Lorenz Domke (lorenz.domke\@mgx.de) 2001.\n\n";
+  if ($OPT{version}) {
+    exit;
+  }
 }
+
 my ($li_start, $li_end);
 $li_start = "\\item ";
 $li_end = "\n";
@@ -133,18 +159,40 @@ my $idx_cnt = 0;
            )
          }=();
 
+$tagHash{'\ACCEPT_ALL'}=1 if exists $OPT{allTags};
+
 # build parser
 my ($parser)=new PerlPoint::Parser;
+
+
+# build and configure a Safe object
+my $safe = new Safe;
+$safe->permit(@{$OPT{safeOpcode}}) if exists $OPT{safeOpcode};
 
 # and call it
 $parser->run(
              stream  => \@streamData,
              tags    => \%tagHash,
              files   => \@ARGV,
-             trace   => TRACE_NOTHING,
-             safe    => new Safe,
-             display => DISPLAY_ALL,
-            );
+             safe    => exists $OPT{activeContents} ? $safe : undef,
+             activeBaseData => {
+                                targetLanguage => 'SDF',
+                                userSettings   => {map {$_=>1} exists $OPT{set} ? @{$OPT{set}} : ()},
+                               },
+             vispro  => 1,
+             trace   => TRACE_NOTHING
+                      + ((exists $OPT{trace} and $OPT{trace} &  1) ? TRACE_PARAGRAPHS : 0) 
+                      + ((exists $OPT{trace} and $OPT{trace} &  2) ? TRACE_LEXER      : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} &  4) ? TRACE_PARSER     : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} &  8) ? TRACE_SEMANTIC   : 0)
+                      + ((exists $OPT{trace} and $OPT{trace} & 16) ? TRACE_ACTIVE     : 0),
+             display => DISPLAY_ALL
+                      + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)                                
+                      + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
+             cache   => (exists $OPT{cache} ? CACHE_ON : CACHE_OFF)
+                      + (exists $OPT{cacheCleanup} ? CACHE_CLEANUP : 0),
+            ) or exit 1;
+
 
 # build a backend
 my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_NOTHING);
@@ -271,7 +319,7 @@ sub gen_index {
 # foreach my $idx (sort keys %INDEX) {
 #   print "$idx \\textbf{ \\pageref{$INDEX{$idx}}}\\\\\n";
 # }
-  print "\n\\printindex\n\n";
+# print "\n\\printindex\n\n";
 } # gen_index
 
 #----------------------------------------------------------
@@ -288,6 +336,9 @@ sub start_new_page {
 
        };
   $page_ref = $PAGES[$page_cnt] -> {BODY};
+  my $hd = $PAGES[$page_cnt] -> {HD};
+  $ANCHOR{$hd} = $page_cnt; # insert anchor for this page
+ #push @{$PAGES[$page_cnt]->{BODY}}, "<a name=\"$hd\">";
 } # start_new_page
 
 #----------------------------------------------------------
@@ -449,6 +500,7 @@ sub handleTag {
   # character formatting Tags: handle B I U SUP SUB
   if ($_[2] eq "B"){
     flush;
+    return if $verbatim_flag;
     if ($_[1]==DIRECTIVE_START){
       push_page $page_ref, "\\textbf{";
     } else {
@@ -459,6 +511,7 @@ sub handleTag {
 
   if ($_[2] eq "I"){
     flush;
+    return if $verbatim_flag;
     if ($_[1]==DIRECTIVE_START){
       push_page $page_ref, "\\textit{";
     } else {
@@ -469,6 +522,7 @@ sub handleTag {
 
   if ($_[2] eq "U"){
     flush;
+    return if $verbatim_flag;
     if ($_[1]==DIRECTIVE_START){
       push_page $page_ref, "\\underline{";
     } else {
@@ -479,6 +533,7 @@ sub handleTag {
 
   if ($_[2] eq "SUP"){
     flush;
+    return if $verbatim_flag;
     if ($_[1]==DIRECTIVE_START){
       push_page $page_ref, "\$^{";
     } else {
@@ -489,6 +544,7 @@ sub handleTag {
 
   if ($_[2] eq "SUB"){
     flush;
+    return if $verbatim_flag;
     if ($_[1]==DIRECTIVE_START){
       push_page $page_ref, "\$_{";
     } else {
@@ -564,14 +620,15 @@ sub handleTag {
         my $xsize = $_[3]->{'epsfxsize'};
         push_page $page_ref, "\n\n \\epsfxsize=$xsize\n";
       }
-      my $ps_file = $file;
+      my $ps_file = "$OPT{slide_dir}/$file";
       $ps_file =~ s/\.[^.]*$/.eps/;
+      print STDERR " ... image: $ps_file\n";
       if (-e $ps_file) {
         push_page $page_ref, "\n\n\\epsffile{$ps_file}\n\n";
-        push_page $page_ref, "\n \\end{center}\n";
       } else {
         push_page $page_ref, "\n\n (image from file $file) \n\n";
       }
+      push_page $page_ref, "\n \\end{center}\n";
     }
     return;
   }
@@ -805,11 +862,11 @@ __END__
 
 =head1 NAME
 
-B<pp2latex> - simple slide generator
+B<pp2latex> - PerlPoint to LaTeX converter
 
 =head1 VERSION
 
-This manual describes version B<1.06>.
+This manual describes version B<1.07>.
 
 =head1 SYNOPSIS
 
@@ -818,179 +875,151 @@ This manual describes version B<1.06>.
 
 =head1 DESCRIPTION
 
-C<pp2latex> creates a set of HTML files for a foilset based on
-a simple textfile F<slide_text>. A slide is normally made up by
-a header and an number of bullet items:
-
-  Example of a Slide
-
-  * Contains a head line ("Example of a Slide")
-
-  * Should have some bullet items
-
-  * May have footer and/or header section with company logo and navigation links
-
-The intention of C<pp2latex> is to simply write down your headers and
-bullet items just like above in an ASCII file and then automatically create 
-a set of HTML files ready for presentation.
-
-The main features of C<pp2latex> are: 
-
-=over 4
-
-=item *
-
-Optional templates for header and footer of the slides (e.g. for
-company logo, hyperlinks for navigation, copyright note etc.)
-
-=item *
-
-Creation of index page with links to all slides
-
-=item *
-
-Optional layout as HTML frameset (header frame, contents frame,
-footer frame and eventually index frame). The footer frame has
-always the same position on the screen.
-
-=back
-
-The following documentation describes in detail the syntax of a
-pp2latex input file and all options of C<pp2latex>.
-
-=head1 SYNTAX of pp2latex Files
-
-There are the following main components of an input file for C<pp2latex>:
-
-=over 4
-
-=item *
-
-Comments
-
-=item *
-
-Headers
-
-=item *
-
-Bullet Items
-
-=item *
-
-Paragraphs
-
-=item *
-
-Blocks
-
-=item *
-
-Verbatim Blocks
-
-=back
-
-=head2 Comments
-
-Lines which start with a hash sign C<#> are treated as comments. They
-are not included in the slides.
-
-=head2 Headers
-
-Headers are lines which start with a C<=> sign. The number of C<=> signs
-determines the level of the header:
-
- =This is a level 1 header
-
- ==This is a  level 2 header
-
-It is not necessary to put a blank line after the header but it
-increases readability.
-
-=head2 Bullet Items
-
-A bullet item is indicated by an asterisk C<*> in the first column.
-
- * Item one is very long
- and continued on the next line
-
- * Item 2
-
- * Item Three
-
-B<Note:> It is important to put a blank line after each bullet item, otherwise
-the text on the following line belongs to the same bullet.
-
-=head2 Pragraphs
-
-Text which is not indented is treated as a normal paragraph.
-In HTML terminology this is a <P> ... </P> container.
-
-=head2 Blocks
-
-Text which is indented by one ore more blanks will be put in a 
-colored box. The text will be treated as I<pre formatted>.
-Special formatting tags (see below) are still applied.
-
-The HTML representation is a <TABLE> with colored background
-and the text itself is put into a <PRE> ... </PRE> container.
-
-=head2 Verbatim Blocks
-
-Verbatim Blocks are copied I<as is> into the HTML page. Special
-formatting tags (see below) are not applied. (Only HTML meta
-characters must be escaped, i.g. the "E<lt>" or "E<gt>" sign.)
-This means that Verbatim Block are suitable for code examples:
-Just cut and paste your piece of code into the C<pp2latex> file
-and put the verbatim box markers around:
-
-  &<< END_OF_BOX
-  sub verbatim_text
-  {
-    for example some piece of code;
-  }
-  END_OF_BOX
-
-The block begins with `&<E<lt>E<lt>MARK' and ends with the text
-C<MARK> on a separate line. This is like a C<here document> in perl
-or in a C-shell.
-
-=head2 Special Formatting Tags
-
-Some rudimentary formatting is also supported by C<pp2latex>. It is
-essentially the same syntax as in POD:
-
-  C<this is code>
-  B<bold face>
-  I<italic>
-  E<lt>  E<gt>
-  E<uml>
+C<pp2latex> creates a LaTeX file from a PerlPoint input file.
 
 
+=head1 SYNTAX of PerlPoint Files
 
-=head2 Using Hyperlinks
+For a detailed description of the PerlPoint language please refer to the
+excellent POD documentation of the B<PerlPoint::Parser> Module by Jochen Stenzel.
+There you will find everything you ever wanted to know about PerlPoint ;-)
 
 
 =head1 OPTIONS
 
+=over 4
+
+=item --activeContents
+
+PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
+reasons of security this feature is deactivated by default. Set this option to active
+it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
+
+=item --allTags
+
+C<pp2html> implements the PerlPoint tags I<B>, I<C>, I<E>, I<I> and I<IMAGE>. Because every
+PerlPoint translator can define its own tags it may happen that a source file containes
+more than these. If they do not pass translation try this option which makes I<all> tags
+accepted. I<This is still an experimental feature.>
+
+=item --cache
+
+parsing of one and the same document several times can be accelerated by activating the
+PerlPoint parser cache by this option. The performance boost depends on your document
+structure.
+
+Cache files are written besides the source and named ".<source file>.ppcache".
+
+It can be useful to (temporarily) deactivate the cache to get correct line numbers in
+parser error messages (currently numbers cannot always reported correctly with activated
+cache because of a special perl behaviour).
+
+=item --cacheCleanup
+
+PerlPoint parser cache files grow (with every modified version of a source parsed)
+because they store expressions for every parsed variant of a paragraph. This is usually
+uncritical but you may wish to clean up the cache occasionally. Use this option to
+perform the task (or remove the cache file manually).
+
+
+=item -nocopyright
+
+suppresses the copyright message;
+
+=item -noinfo
+
+supresses runtime informations;
+
+=item --nowarn
+
+supresses warnings;
+
+=item --quiet
+
+a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messages are suppressed;
+
+=item --safeOpcode <opcode>
+
+If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
+evaluated. To keep security this is done via an object of class B<Safe> which restricts code
+to permitted operations. By this option you can declare which opcode (or opcode tag) is
+permitted. Please see the B<Safe> and B<Opcode> manual pages for further details. (These modules
+come with perl.)
+
+This option can be used multiply.
+
+You may want to store these options in default option files, see below for details.
+
+
+For the examples used in I<ppdoc.pp> you should use
+
+ --safeOpcode=:filesys_open --safeOpcode=:still_to_be_decided --safeOpcode=:browse
+
+
+=item --set <flag>
+
+This option allows you to pass certain settings - of your choice - to active contents
+(like conditions) where it can be accessed via the $PerlPoint hash reference. For
+example, your PerlPoint code could contain a condition like
+
+  ? $PerlPoint->{userSettings}{special}
+
+  Special part.
+
+  ? 1
+
+. The special part enclosed by the two conditions would then be processed I<only> if you
+call C<pp2html> with
+
+  --set special
+
+- and if active contents was enabled by I<-active>, of course.
+
+This option can be used multiply.
+
+=item --trace [<level>]
+
+activates traces of the specified level. You may use the environment variable SCRIPTDEBUG
+alternatively (but an option overwrites environment settings). The following levels are
+defined  (use the I<numeric> values) - if a description sounds cryptic to you, just ignore
+the setting:
+
+=item --help
+
+Output of usage.
+
+=item --version
+
+Output of version information.
+
+=back
 
 =head1 FILES
 
+Configuration file $HOME/.pp2latex
+
 =head1 ENVIRONMENT
 
-=head1 NOTES
+The following environment variables have influence on the program:
 
-The PerlPoint format was initially designed by Tom Christiansen.
-Tom used a simple syntax which was inspired by POD and
-a simple script which created HTML files from an ASCII file.
+=over 4
+
+=item SCRIPTDEBUG
+
+may be set to a numeric value to activate certain trace levels. You can use option I<-trace>
+alternatively (note that a used option overwrites an environment setting). The several levels
+are described with this option.
+
+=back
+
 
 =head1 SEE ALSO
 
+C<pp2html>
+
 =head1 AUTHOR
 
-Jochen Stenzel (perl@jochen-stenzel.de), 
-Lorenz Domke (lorenz.domke@gmx.de),
-2000. All rights reserved.
+Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 
 =cut
 
@@ -1005,6 +1034,9 @@ Lorenz Domke (lorenz.domke@gmx.de),
 # --------------------------------------------------------------------------
 
 $Log: pp2latex,v $
+Revision 1.7  2001/01/17 22:24:16  lorenz
+checkin for version 0.008
+
 Revision 1.6  2000/12/10 22:48:37  lorenz
 check in for firest CPAN version
 

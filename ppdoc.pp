@@ -1,9 +1,9 @@
 // vim: set filetype=pp2html : 
 // Comment: ppdoc.pp: documentation and testfile for pp2html
 //
-// $Id: ppdoc.pp,v 1.6 2000/12/10 22:48:37 lorenz Exp $
-// $Revision: 1.6 $
-// $Date: 2000/12/10 22:48:37 $
+// $Id: ppdoc.pp,v 1.7 2001/01/17 22:24:16 lorenz Exp $
+// $Revision: 1.7 $
+// $Date: 2001/01/17 22:24:16 $
 
 // Some variabels:
 
@@ -493,4 +493,6 @@ This chapter presents some hints for further reading.
 See for example:
 
   http://www.reportlab.com/demos/pythonpoint/pythonpoint.html
+
+  The GNU Portable presenter, available on CPAN (PPresenter)
 

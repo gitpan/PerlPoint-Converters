@@ -1,9 +1,11 @@
 <!-- **** Bottom template with navigation items 
-  $Id: ex_std_norm-bot.tpl,v 1.3 2000/11/02 19:37:48 lorenz Exp lorenz $
-  $Revision: 1.3 $
-  $Date: 2000/11/02 19:37:48 $
+  $Id: ex_std_norm-bot.tpl,v 1.4 2001/01/17 22:24:16 lorenz Exp $
+  $Revision: 1.4 $
+  $Date: 2001/01/17 22:24:16 $
 -->
+<HR SIZE=8>
 
+</FONT>
 <TABLE WIDTH=100%  BORDER=0 CELLSPACING=0 CELLPADDING=2>
 <TR>
 
