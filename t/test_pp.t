@@ -6,7 +6,10 @@
 use strict;
 use Test;
 
-BEGIN{ plan test => 4 }
+my $n;
+BEGIN{ 
+  $n = 4;
+  plan test => $n }
 
 #ok(1);
 #ok(1);
@@ -19,6 +22,6 @@ foreach my $test( qw(ex_frm_norm ex_frm_tree ex_std_norm ex_std_tree)) {
   if (! -d $test){
     mkdir $test, 0750;
   }
-  system "$^X ./pp2html --quiet \@$test.cfg ppdoc.pp";
+  system "$^X -Iblib/lib -Iblib/lib -Iblib/lib ./pp2html --quiet \@$test.cfg ppdoc.pp";
   ok(-f "$test/page_idx.htm"  or  -f "$test/page_idx.html");
 }

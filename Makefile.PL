@@ -7,7 +7,7 @@ require 5.005_03;
 
 $ok=WriteMakefile(
     'NAME'	=> 'PerlPoint-Converters',
-    'VERSION' => '0.11',
+    'VERSION' => '0.11.01',
      PREREQ_PM     => {
                          PerlPoint::Parser => 0.34,
                          Getopt::ArgvFile => 1.01,

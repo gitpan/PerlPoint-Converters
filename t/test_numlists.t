@@ -8,9 +8,14 @@ use Test;
 use lib "./t";
 use pptest;
 
-BEGIN{ plan test => 1 }
+my $n;
+BEGIN{ 
+  $n = 1;
+  plan test => $n }
 
-system " $^X ./pp2html -slide_dir t --quiet t/test_numlists.pp";
+system " $^X -Iblib/lib ./pp2html -slide_dir t --quiet t/test_numlists.pp";
 
-ok( cmp_files("t/slide0001.htm", "t/ref_numlists.htm"));
-
+for(my $i=1; $i <= $n; $i++){
+  my $nn = sprintf "%04d", $i;
+  ok( cmp_files("t/slide$nn.htm", "t/ref_numlists$nn.htm"));
+}

@@ -40,7 +40,7 @@ use PerlPoint::Parser 0.34;
 (my $me = $0) =~ s#.*/##;
 
 my $VERSION = sprintf("%d.%02d", q/$Revision: 1.22 $/ =~ /(\d+)\.(\d+)/);
-my $PACK_VERSION = "0.11";
+my $PACK_VERSION = "0.11.01";
 $main::VERSION = $VERSION;
 
 my $nix = "";                      # for using RCS keys in Usage, ...
@@ -198,25 +198,25 @@ my @OPTIONS = (
 
   ## ------------------------- Colors
 
+  "box_color=s",
+  "boxtext_color=s",
+
+  "fgcolor=s",
   "bgcolor=s",
+  "idx_fgcolor=s",
+  "idx_bgcolor=s",
+  "toc_fgcolor=s",
+  "toc_bgcolor=s",
+  "top_fgcolor=s",
+  "top_bgcolor=s",
+  "bot_fgcolor=s",
+  "bot_bgcolor=s",
+
   "back_image=s",
   "toc_back_image=s",
   "idx_back_image=s",
   "top_back_image=s",
   "bot_back_image=s",
-
-  "box_color=s",
-  "boxtext_color=s",
-
-  "fgcolor=s",
-  "idx_fgcolor=s",
-  "idx_bgcolor=s",
-  "toc_fgcolor=s",
-  "toc_bgcolor=s",
-  "top_bgcolor=s",
-  "top_fgcolor=s",
-  "bot_bgcolor=s",
-  "bot_fgcolor=s",
 
   ## ------------------------- Link Colors
 
@@ -240,12 +240,12 @@ my @OPTIONS = (
 
   ## ------------------------- Templates
 
-  "top_idx_template=s",
   "top_template=s",
+  "top_idx_template=s",
   "top_toc_template=s",
 
-  "bottom_idx_template=s",
   "bottom_template=s",
+  "bottom_idx_template=s",
   "bottom_toc_template=s",
 
   "nav_template=s",
@@ -297,7 +297,7 @@ my @OPTIONS = (
   "top_middle_txt=s",
   "logo_image_filename=s",
 
-  ## ------------------------- Directories
+  ## ------------------------- Directories, Filenames
 
   "start_page=s",
   "frame_set=s",
@@ -2374,7 +2374,7 @@ B<pp2html> - PerlPoint to HTML converter
 
 =head1 VERSION
 
-This manual describes version B<0.1001, build 1.22>.
+This manual describes version B<0.11, build 1.23>.
 
 =head1 SYNOPSIS
 
@@ -2661,6 +2661,131 @@ heading included in the index. The index tag is not allowed inside of a heading.
 
 =over 4
 
+
+=item --activeContents
+
+PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
+reasons of security this feature is deactivated by default. Set this option to activate
+it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
+
+=item --cache
+
+parsing of one and the same document several times can be accelerated by activating the
+PerlPoint parser cache by this option. The performance boost depends on your document
+structure.
+
+Cache files are written besides the source and named ".<source file>.ppcache".
+
+It can be useful to (temporarily) deactivate the cache to get correct line numbers in
+parser error messages (currently numbers cannot always reported correctly with activated
+cache because of a special perl behaviour).
+
+=item --cacheCleanup
+
+PerlPoint parser cache files grow (with every modified version of a source parsed)
+because they store expressions for every parsed variant of a paragraph. This is usually
+uncritical but you may wish to clean up the cache occasionally. Use this option to
+perform the task (or remove the cache file manually).
+
+
+=item --safeOpcode=opcode
+
+If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
+evaluated. To keep security this is done via an object of class B<Safe> which restricts code
+to permitted operations. By this option you can declare which opcode (or opcode tag) is
+permitted. Please see the B<Safe> and B<Opcode> manual pages for further details. (These modules
+come with perl.)
+
+Pass C<ALL> to allow I<everything>.
+
+This option can be used multiply.
+
+You may want to store these options in default option files, see below for details.
+
+
+For the examples used in I<ppdoc.pp> you should use
+
+ --safeOpcode=:filesys_open --safeOpcode=:still_to_be_decided --safeOpcode=:browse
+
+
+=item --set=flag
+
+This option allows you to pass certain settings - of your choice - to active contents
+(like conditions) where it can be accessed via the $PerlPoint hash reference. For
+example, your PerlPoint code could contain a condition like
+
+  ? $PerlPoint->{userSettings}{special}
+
+  Special part.
+
+  ? 1
+
+The special part enclosed by the two conditions would then be processed I<only> if you
+call C<pp2html> with
+
+  --set special
+
+and if active contents was enabled by I<-active>, of course.
+
+This option can be used multiply.
+
+=item --trans_table=filename
+
+The C<--trans_table> option specifies a the filename of a tanslation table
+for non ASCII characters like german Umlaute etc. The characters are
+specifed as octal numbers as in the folowing example:
+
+  #Translation Table for German Umlaute (this is the default)
+
+  \334 &Uuml;
+  \374 &uuml;
+
+  \326 &Ouml;
+  \366 &ouml;
+
+  \304 &Auml;
+  \344 &auml;
+
+  \337 &szlig;
+
+
+=item --filter=regexp
+
+This specifies a regular expression C<regexp> which should match
+all allowed languages for EMBEDed code. The expression is evaluated
+caseinsensitively.
+
+Example: --filter="perl|html"
+
+=item --nocopyright
+
+suppresses the copyright message;
+
+=item --noinfo
+
+supresses runtime informations;
+
+=item --nowarn
+
+supresses warnings;
+
+=item --quiet
+
+a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messages are suppressed;
+
+=item --count_only
+
+If this option is set, only a counter will indicate that slides are created. Otherwise 
+for all slides the full header is printed while generating the slides.
+
+
+=item --box_color=color
+
+=item --boxtext_color=color
+
+Set background and forground colors for block paragraphs
+
+
 =item --bgcolor=color
 
 =item --fgcolor=color
@@ -2704,23 +2829,26 @@ C<top>, C<bot>, C<toc> and C<idx> for example C<--toc_linkcolor white>.
 
 Set background image for nomal slides, table of contents, index, top frame or bottom frame.
 
-=item --bottom_template=filename
 
 =item --top_template=filename
 
-=item --bottom_idx_template=filename
-
 =item --top_idx_template=filename
+
+=item --top_toc_template=filename
+
+=item --bottom_template=filename
+
+=item --bottom_idx_template=filename
 
 =item --bottom_toc_template=filename
 
-=item --top_toc_template=filename
+=item --nav_template=filename
 
 =item --nav_top_template=filename
 
 =item --nav_bottom_template=filename
 
-Filenames for template file (in HTML format). The bottom template is appended to
+Filenames for template files (in HTML format). The bottom template is appended to
 each slide. Can be used to create footers with navigation, copyright note etc.
 The top template is inserted at the top of each slide.
 
@@ -2792,12 +2920,6 @@ the slides. See for example the orange_slides style.
 =item --boxtext_bold=OFF
 
 Text in colored textboxes will be printed B<bold> or normal.
-
-=item --box_color=color
-
-=item --boxtext_color=color
-
-Set background and forground colors for block paragraphs
 
 =item --box_border=width
 
@@ -2999,123 +3121,6 @@ is copied to this filename unless the \C<--start_page> option is set to the empt
 This is useful for web pages because most browsers automatically open the "index.htm" if it exists.
 For example, if you have installed your document or presentation at "http://somewhere.net/Example",
 a web browser will automatically open the first page of your document if the browser is directed to this URL.
-
-=item --trans_table=filename
-
-The C<--trans_table> option specifies a the filename of a tanslation table
-for non ASCII characters like german Umlaute etc. The characters are
-specifed as octal numbers as in the folowing example:
-
-  #Translation Table for German Umlaute (this is the default)
-
-  \334 &Uuml;
-  \374 &uuml;
-
-  \326 &Ouml;
-  \366 &ouml;
-
-  \304 &Auml;
-  \344 &auml;
-
-  \337 &szlig;
-
-
-
-=item --activeContents
-
-PerlPoint sources can embed Perl code which is evaluated while the source is parsed. For
-reasons of security this feature is deactivated by default. Set this option to activate
-it. You can use I<--safeOpcode> to fine tune which operations shall be permitted.
-
-=item --cache
-
-parsing of one and the same document several times can be accelerated by activating the
-PerlPoint parser cache by this option. The performance boost depends on your document
-structure.
-
-Cache files are written besides the source and named ".<source file>.ppcache".
-
-It can be useful to (temporarily) deactivate the cache to get correct line numbers in
-parser error messages (currently numbers cannot always reported correctly with activated
-cache because of a special perl behaviour).
-
-=item --cacheCleanup
-
-PerlPoint parser cache files grow (with every modified version of a source parsed)
-because they store expressions for every parsed variant of a paragraph. This is usually
-uncritical but you may wish to clean up the cache occasionally. Use this option to
-perform the task (or remove the cache file manually).
-
-
-=item --filter=regexp
-
-This specifies a regular expression C<regexp> which should match
-all allowed languages for EMBEDed code. The expression is evaluated
-caseinsensitively.
-
-Example: --filter="perl|html"
-
-=item --nocopyright
-
-suppresses the copyright message;
-
-=item --noinfo
-
-supresses runtime informations;
-
-=item --nowarn
-
-supresses warnings;
-
-=item --quiet
-
-a shortcut for "--nocopyright --noinfo --nowarn": all non critical runtime messages are suppressed;
-
-=item --count_only
-
-If this option is set, only a counter will indicate that slides are created. Otherwise 
-for all slides the full header is printed while generating the slides.
-
-=item --safeOpcode=opcode
-
-If active contents is enabled (I<--activeContents>), Perl code embedded into the translated PerlPoint sources will be
-evaluated. To keep security this is done via an object of class B<Safe> which restricts code
-to permitted operations. By this option you can declare which opcode (or opcode tag) is
-permitted. Please see the B<Safe> and B<Opcode> manual pages for further details. (These modules
-come with perl.)
-
-Pass C<ALL> to allow I<everything>.
-
-This option can be used multiply.
-
-You may want to store these options in default option files, see below for details.
-
-
-For the examples used in I<ppdoc.pp> you should use
-
- --safeOpcode=:filesys_open --safeOpcode=:still_to_be_decided --safeOpcode=:browse
-
-
-=item --set=flag
-
-This option allows you to pass certain settings - of your choice - to active contents
-(like conditions) where it can be accessed via the $PerlPoint hash reference. For
-example, your PerlPoint code could contain a condition like
-
-  ? $PerlPoint->{userSettings}{special}
-
-  Special part.
-
-  ? 1
-
-The special part enclosed by the two conditions would then be processed I<only> if you
-call C<pp2html> with
-
-  --set special
-
-and if active contents was enabled by I<-active>, of course.
-
-This option can be used multiply.
 
 =cut
 

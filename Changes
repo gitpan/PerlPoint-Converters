@@ -1,6 +1,9 @@
 Revision history for PerlPoint-Converters.
 
-Version 0.11   xx/xx/2001
+Version 0.11.01   08/02/2001
+-  Cleaning up the test suite (was broken in 0.11, sorry!)
+
+Version 0.11   07/28/2001
 -  Bullet bug fixed: When there was no bullet list in the PerlPoint input file
    then in the table of contents all bullets were standard HTML <LI> tags even
    if bullet images had been specified.
@@ -13,9 +16,10 @@ Version 0.11   xx/xx/2001
 -  replace LOGO_IMAG_FILENAME with $OPT{image_ref}/$OPT{logo_image_filename}
 -  use reasonalble defaults for  TOP_RIGHT_TXT etc. in styles. They can now be
    overwritten by main options.
--  expand HTML escapes also in Page Headers (e. g. E<uuml>)
 -  --start_page=filename option (default: index.htm)
 -  new keywords for Templates to be replaced: TOP_BGCOLOR, BOT_BGCOLOR, ...
+-  FAQ, and reference manual started, Getting Started added.
+   Documentation starts to improve :-)
 
 Version 0.10   06/16/2001
 -  Nested tags bug fixed: it was not possible to use \I, \C inside 
