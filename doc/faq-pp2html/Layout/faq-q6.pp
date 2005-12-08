@@ -1,5 +1,5 @@
 
-// vim: set filetype=pp2html:
+// vim: set filetype=PerlPoint:
 
 
 =My Own Bullets With Styles

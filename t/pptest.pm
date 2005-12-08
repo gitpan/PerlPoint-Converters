@@ -2,61 +2,69 @@ package pptest;
 
 # some functions used in all test scripts
 
-use Digest::MD5;
 use Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = qw( cmp_files );
+@EXPORT = qw( read_file cmp_files ltx_unlink);
 
+sub ltx_unlink { #{{{-----------------------------------------------
+  my $name = shift;
+  unlink "t/d_$name/ltx_$name.tex";
+  unlink "t/d_$name/ltx_$name.aux";
+  unlink "t/d_$name/ltx_$name.log";
+  unlink "t/d_$name/ltx_$name.idx";
+  unlink "t/d_$name/ltx_$name.log";
+  unlink "t/d_$name/ltx_$name.toc";
+  unlink "t/d_$name/ltx_$name.dvi";
+} # ltx_unlink }}}
 
-#------------------------------------------------
-sub cmp_files {
-# compare md5 sum of result file with entry in md5 sums txt file
-  my ($f1) = @_;
-  my $m1 = calc_md5($f1);
-  my $m2 = 2;
-  my $ref = $f1;
-  $ref =~ s#t/##;
-  $ref =~ s/\.html?//;
-  $ref =~ s/\.tex//;
-  open(MD, "t/t_md5_sums.txt") or die "cannot opent/t_md5_sums.txt: $!\n";
-  while(<MD>){
-    if (/^(\w+) $ref/){
-         $m2 = $1;
-         last;
+sub read_file { #{{{------------------------------------------------
+  my $file = shift;
+  my $res = "";
+  open(F, $file) or die "cannot open $file :!\n";
+  while (<F>) {
+    next if /^<!-- .*Created by/;
+    next if /<!-- ZOOMRESTART -->/;
+    next if /<!-- ZOOMSTOP -->/;
+    next if /^%.*Created by/;
+    next if /^\s*$/;
+    if ($file =~ /ltx_/){
+      $res .= $_;
+    } else {
+      $res .= norm($_);
     }
   }
-  close MD;
-  return $m1 eq $m2 ? 1 : 0;
-}
+  close(F);
+  return $res;
+} # read_file }}}
 
-#------------------------------------------------
-sub calc_md5 {
+sub cmp_files { #{{{------------------------------------------------
   my ($f1) = @_;
+  my $ref = $f1;
+  $ref =~ s#html?#ref#;
+  $ref =~ s#\.tex#.ref#;
 
-  if (! -e $f1) {
+  my $s1 = read_file($f1);
+  my $s2 = read_file($ref);
+  if ($s1 ne $s2) {
+    print "l1: ", $s1, "\n";
+    print "l2: ", $s2, "\n";
     return 0;
+  } else {
+    return 1;
   }
+} # cmp_files }}}
 
-  my $ctx = Digest::MD5->new;
-  open(F1, $f1) or return 0;
-  while (<F1>) {
-    next if /^<!-- .*Created by/;
-    next if /^%.*Created by/;
-    $ctx->add(norm($_));
-  }
-  close(F1);
-  return $ctx->hexdigest;
-}
-
-#------------------------------------------------
-sub norm {
+sub norm { #{{{-----------------------------------------------------
   # normalize HTML lines
   my $line = shift;
-  $line =~ s/^\s+//;
-  $line =~ s/\s+$//;
-  $line =~ s/\s+/ /g;
-  $line =~ tr/a-z/A-Z/;
+  $line =~ s/^\s+//; # trim leading white space
+  $line =~ s/\s+$//; # trim trailing white space
+  $line =~ s/\s+/ /g; # compress white space
+# $line =~ tr/a-z/A-Z/;
   return $line;
-}
+} # norm }}}
 1;
+__END__
+
+# vim:foldmethod=marker:foldcolumn=4

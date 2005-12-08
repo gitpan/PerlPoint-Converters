@@ -4,19 +4,6 @@
 PERL=perl
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 PPDOC = ./PPDOC
 GETTIN_STARTED = $(PPDOC)/Getting-Started/slide0000.htm
 FAQ_PARSER  = $(PPDOC)/FAQ-Parser/slide0000.htm

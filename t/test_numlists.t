@@ -1,23 +1,24 @@
-
-# Test of pp2html
-# test of bullets
+# test of numbered lists
 
 use strict;
-use Test;
 
 use lib "./t";
 use pptest;
 
 my $n;
 BEGIN{ 
-  $n = `$^X -e 'while(<>){\$i++ if /^=/}print \$i' t/test_numlists.pp` + 1;
-  plan test => $n }
+  my $h = $^O =~ /win/i ? '"' : "'";
+  $n = `$^X -e ${h}while(<>){\$i++ if /^=/}print \$i$h t/test_numlists.pp` + 1;
+}
+use Test::Simple tests => $n;
 
-system " $^X -Iblib/lib ./pp2html -slide_prefix numlists_ -slide_dir t --quiet t/test_numlists.pp";
+system " $^X -Iblib/lib ./pp2html -slide_prefix numlists_ -slide_dir t/d_numlists --quiet t/test_numlists.pp";
 
 for(my $i=1; $i <= $n; $i++){
   my $nn = sprintf "%04d", $i-1;
-  ok( cmp_files("t/numlists_$nn.htm"));
-  unlink "t/numlists_$nn.htm" unless $ENV{PP_DEBUG};
+  my $ok = ok( cmp_files("t/d_numlists/numlists_$nn.htm"), "numlists_$nn.htm");
+  unlink "t/d_numlists/numlists_$nn.htm" unless $ENV{PP_DEBUG} or !$ok;
 }
-unlink "index.htm";
+unlink "t/d_numlists/index.htm";
+
+# vim:ft=perl

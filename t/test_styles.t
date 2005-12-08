@@ -5,7 +5,8 @@ my $ns;
 my @styles;
 BEGIN{ 
   # number of slides in test_styles.pp:
-  $ns = `$^X -e 'while(<>){\$i++ if /^=/}print \$i' t/test_styles.pp` + 2;
+  my $h = $^O =~ /win/i ? '"' : "'";
+  $ns = `$^X -e ${h}while(<>){\$i++ if /^=/}print \$i$h t/test_styles.pp` + 2;
   @styles = qw(big_blue pp_book orange_slides);
   $n = $ns * scalar(@styles);
 }
@@ -17,18 +18,26 @@ use Test::Simple tests => $n;
 use lib "./t";
 use pptest;
 
+my $ok;
 
 foreach my $test( @styles ) {
-  system "$^X -Iblib/lib ./pp2html --slide_prefix $test -slide_dir t --quiet \@t/$test.cfg t/test_styles.pp";
+  system "$^X -Iblib/lib ./pp2html --slide_prefix $test -slide_dir t/d_styles --quiet \@t/$test.cfg t/test_styles.pp";
 
-  my $l = $test eq "orange_slides" ? "l" : "";
   for(my $i=1; $i < $ns; $i++){
     my $nn = sprintf "%04d", $i-1;
-    ok( cmp_files("t/$test$nn.htm$l"), "Test style $test");
-    unlink "t/$test$nn.htm$l" unless $ENV{PP_DEBUG};
+    my $ok =ok( cmp_files("t/d_styles/$test$nn.htm"), "Test style $test");
+    unlink "t/d_styles/$test$nn.htm" unless $ENV{PP_DEBUG} or !$ok;
   }
-  unlink "t/index.htm";
-  ok( cmp_files("t/${test}_idx.htm$l"), "Test index $test");
-  unlink "t/${test}_idx.htm$l" unless $ENV{PP_DEBUG};
+  unlink "t/d_styles/index.htm";
+  unlink "t/d_styles/frame_set.html";
+  my $ok =ok( cmp_files("t/d_styles/${test}_idx.htm"), "Test index $test");
+  unlink "t/d_styles/${test}_idx.htm" unless $ENV{PP_DEBUG} or !$ok;
   
 }
+  unlink "t/d_styles/pp_book_start.htm" unless $ENV{PP_DEBUG};
+  unlink "t/d_styles/pp_book-top.htm" unless $ENV{PP_DEBUG};
+  unlink "t/d_styles/pp_book-bot.htm" unless $ENV{PP_DEBUG};
+  unlink "t/d_styles/orange_slides-top.htm" unless $ENV{PP_DEBUG};
+  unlink "t/d_styles/orange_slides-bot.htm" unless $ENV{PP_DEBUG};
+
+# vim:ft=perl

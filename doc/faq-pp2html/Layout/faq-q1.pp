@@ -1,5 +1,5 @@
 
-// vim: set filetype=pp2html:
+// vim: set filetype=PerlPoint:
 
 
 =Colors in Tables

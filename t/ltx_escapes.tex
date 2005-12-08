@@ -1,0 +1,64 @@
+% Created by pp2latex, build 1.14 from PerlPoint-Converters 1.0201
+\documentclass [11pt] {article}   % 
+\usepackage{german}               % ISO-Latin-Zeichensatz (äöüß)
+\usepackage{isolatin1}            % ISO-Latin-Zeichensatz (äöüß)
+\parindent0pt                     % no indentation of first line
+\parskip1ex                       % white space between chapters
+\pagestyle{headings}     %
+\usepackage{epsf}
+\usepackage{makeidx}
+
+% setup for DIN A4
+\oddsidemargin3cm
+\evensidemargin3cm
+\setlength{\hoffset}{-1in}            % compensation of
+\setlength{\voffset}{-2cm}            % printer offset
+
+\textwidth15cm
+\topmargin1cm
+\headheight3ex
+\headsep12pt
+\textheight23cm
+\setlength{\footskip}{1.5cm}
+
+\makeindex
+
+\begin{document}
+
+\begin{flushleft}
+
+
+
+\section{berschrift}
+
+Simple \textbf{text}: Some German Umlaute: "ahnlich, "uber, m"oglich, "Ahnlichkeit, "Uberflieger, "Offnungszeit.
+
+Some German Umlaute: ähnlich, über, möglich, Ähnlichkeit, Überflieger, Öffnungszeit.
+Noch andere \textbf{Escapes}
+
+\section{ in  "Uberschrift}
+
+\begin{itemize}
+\item Simple \textbf{text}: Some German Umlaute: "ahnlich, "uber, m"oglich, "Ahnlichkeit, "Uberflieger, "Offnungszeit.
+\item Some German Umlaute: ähnlich, über, möglich, Ähnlichkeit, Überflieger, Öffnungszeit.
+\end{itemize}
+\textbf{More Escapes} \texttt{in} Ü
+
+\section{berschrift}
+
+Text
+\begin{verbatim}
+ Simple text:
+ Some German Umlaute: ähnlich, über, möglich, Ähnlichkeit,
+ Überflieger, Öffnungszeit.
+
+ Some German Umlaute: ähnlich, über, möglich,
+ Ähnlichkeit, Überflieger, Öffnungszeit.\end{verbatim}
+\printindex
+
+
+
+\end{flushleft}
+
+
+\end{document}

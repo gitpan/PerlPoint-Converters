@@ -11,10 +11,11 @@ use PerlPoint::Constants qw(:tags);
 use vars qw(%tags %sets);
 
 %tags = (
-            A => {
-                   'options' => TAGS_MANDATORY,
-                   'body'    => TAGS_OPTIONAL,
-               },
+# included in PerlPoint::Parser 0.40.58:
+#           A => {
+#                  'options' => TAGS_MANDATORY,
+#                  'body'    => TAGS_OPTIONAL,
+#              },
             BOXCOLOR => { # now obsolete
                    'options' => TAGS_DISABLED,
                    'body'    => TAGS_MANDATORY,
@@ -26,6 +27,11 @@ use vars qw(%tags %sets);
                },
 
             BOXCOLORS => {
+                   'options' => TAGS_MANDATORY,
+                   'body'    => TAGS_DISABLED,
+               },
+
+            PAGE_COLORS => {
                    'options' => TAGS_MANDATORY,
                    'body'    => TAGS_DISABLED,
                },
@@ -75,15 +81,17 @@ use vars qw(%tags %sets);
                    'body'    => TAGS_MANDATORY,
                },
 
-            F => {
-                   'options' => TAGS_OPTIONAL,
-                   'body'    => TAGS_MANDATORY,
-               },
+ # included in PerlPoint::Parser 0.40.58:
+ #          F => {
+ #                 'options' => TAGS_OPTIONAL,
+ #                 'body'    => TAGS_MANDATORY,
+ #             },
 
-            X => {
-                   'options' => TAGS_OPTIONAL,
-                   'body'    => TAGS_MANDATORY,
-               },
+     # included in PerlPoint::Parser 0.39:
+     #      X => {
+     #             'options' => TAGS_OPTIONAL,
+     #             'body'    => TAGS_MANDATORY,
+     #         },
 
             LINE_BREAK => {
                    'options' => TAGS_DISABLED,
@@ -166,13 +174,25 @@ The target itself is used as text of the hyperlink.
 
 This is used for defining the foreground and background colors of text boxes.
 
-=item B<\SUP><superscript>
+=item B<\PAGE_COLORS>{fg="fg_color" bg="bg_color"}
+
+This tag can be used to set individual foreground and background colors
+for each page. It is also possible to change LINKCOLOR, ALINKCOLOR and
+VLINKCOLOR on each page:
+
+  \PAGE_COLORS{link="#aaaaaa" alink="#cc0000" vlink="black"}
+
+Each page which has no explicit setting via \PAGE_COLORS{} will use
+the default settings or the settings which are provided via color
+options.
+
+=item B<\SUP>E<lt>superscript>
 
 Formating tag for a superscript.
 
-=item B<\SUB><subrscript>
+=item B<\SUB>E<lt>subrscript>
 
-Formating tag for a superscript.
+Formating tag for a subscript.
 
 =item B<\U><underlined>
 
@@ -254,3 +274,4 @@ new cvs version
 Revision 1.1  2001/06/14 12:00:56  lorenz
 Initial revision
 
+# vim:foldcolumn=4

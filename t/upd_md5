@@ -31,7 +31,7 @@ my %MD_SUM;
 
 open(MD, "< $md5_file") or die "$!";
 while(<MD>){
-  m/(\w+) (\w+)/;
+  m/(\w+) (\w+.*)/;
   $MD_SUM{$2} = $1;
 }
 close MD;
@@ -41,6 +41,9 @@ while(<$testname*.htm $testname*.html $testname*.tex>){
   my $ref = $slide;
   $ref =~ s/\.html?//;
   $ref =~ s/\.tex//;
+  if ($slide =~ /^changes/){
+    $ref = pptest::geth1($slide);
+  }
   $MD_SUM{$ref} = pptest::calc_md5($slide);
 }
 

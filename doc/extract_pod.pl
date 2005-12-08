@@ -124,21 +124,22 @@ sub print_pod {
       # replace I<> B<> C<>
       while( $line =~ /I<.*?>/){
        #$line =~ s/I<(.*?)>/$1/;
-        $line =~ s/I<(.*?)>/MKITALIC<$1>/;
+        $line =~ s/I<(.*?)>/MKITALIC-<$1>/;
       }
       while( $line =~ /B<.*?>/){
        #$line =~ s/B<(.*?)>/$1/;
-        $line =~ s/B<(.*?)>/MKBOLD<$1>/;
+        $line =~ s/B<(.*?)>/MKBOLD-<$1>/;
       }
       while( $line =~ /C<.*?>/){
        #$line =~ s/C<(.*?)>/$1/;
-        $line =~ s/C<(.*?)>/MKCODE<$1>/;
+        $line =~ s/C<(.*?)>/MKCODE-<$1>/;
       }
+      $line =~ s/\\IMAGE/\\\\IMAGE/g;
       $line =~ s/E<gt>/>/g;
       $line =~ s/E<lt>/</g;
-      $line =~ s/MKITALIC/\\I/g;
-      $line =~ s/MKBOLD/\\B/g;
-      $line =~ s/MKCODE/\\C/g;
+      $line =~ s/MKITALIC-/\\I/g;
+      $line =~ s/MKBOLD-/\\B/g;
+      $line =~ s/MKCODE-/\\C/g;
       chomp($line);
       my @words = split(" " , $line);
       while (@words){

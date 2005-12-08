@@ -1,9 +1,113 @@
-// vim: set filetype=pp2html :
+
+// vim:filetype=PerlPoint
 // Revision history for PerlPoint-Converters.
 
 // ///////////////////////////
 // See also: ./doc/Changes.htm
 // ///////////////////////////
+
+=Version 1.0204  25/02/2005
+
+* better docu (less is more)
+
+=Version 1.0203  20/02/2005
+
+* even more patches from Jochen and Jürgen Christoffel
+
+* Testsuite enhanced (not yet finished)
+
+* new option: --java_script_controls which allows to use keys "n", "p", "s", "i"
+  and left mouse button for navigation.
+
+=Version 1.0202  19/11/2003
+
+* Patches 10 - 20 from Jochen Stenzel (JSTENZEL)
+
+>
+
+* Option \C<includelib>
+
+* Option \C<author>
+
+* Option \C<description>
+
+* Option \C<charset>
+
+* Option \C<norobots>
+
+* Option \C<nosmarttags>
+
+* Option \C<linknavigation>
+
+* Option \C<bootstrapaddress>
+
+* Option \C<validate>
+
+* Option \C<startaddress>
+
+* Option \C<no_html_header>
+
+* Option \C<no_html_bodytags>
+
+
+<
+
+* Option \C<--reverse_order> for reverse order numbering of slides.
+
+* Test-Suite changed. Use .ref files in HTML Format instead of
+  md5 checksums. This needs more space, but it's much easier to maintain.
+  (Escpecially if you are looking for errors, because now you have the
+  reference files available to look into ...)
+
+* \\X tag is now basic tag of PerlPoint (--> require PerlPoint::Parser 0.39)
+
+* New FAQ questions for pp2html
+
+* Enhanced test suite
+
+* Included 9 patches for \C<pp2html> from Jochen Stenzel
+
+* --mv2targetdir Option: Images are moved to target dir
+
+* Documentation in \C<./doc/PPDOC> is now self-contained, i. e. it is
+possible to move this directory somewhere else. There are no longer references
+pointing to ../../.. (in the last version the tree_applet sources were shared
+by all documents but the source base was not a subdirectory of PPDOC ...)
+
+* \\PAGE_COLORS{fg="#xxxxxx" bg="#xxxxxx"} Tag in PerlPoint::Tags::HTML
+
+* Option --contents_indent=m\BR
+  The option --no_contents_indent is now obsolete. You get the same result with
+  --contents_indent=0 (which is the default). You must now use a value > 0 if you
+  want to have the table of contents indented. \BR
+  The new option influences the table of contents also in the case of tree_applet.
+  In previous releases the tree applet TOC was not indented in any case.
+
+* Bugfix in handling of \\LOCALTOC: Had problems with sub chapters of same name
+  in different main chapters (e.g. Chapter1|Overview,  Chapter2|Overview)
+
+* Function \C<relative_path> in Converters.pm, used for finding relative path from
+  slide dir to image dir and applet source dir.
+
+* New style: \C<mixed-mode> as an example for Presentations
+
+* Keyword HEADLINE is expanded to page headline when used in template files. This is
+  useful for top teplates, see \C<mixed-mode> style.
+
+* new option \C<--bullets_align_middle>. Normally bullets will be aligned to top,
+  but this does not look very well when the font size is large. In this case you
+  might use C\<--bullets_align_middle> ...
+
+* pp2latex: patches from Robert Inder included (thanks a lot :-)
+
+>
+
+* use prolog file if necessary
+
+<
+
+* __loaderpath__ removed: check if image has absolute path or is relative to cwd
+
 
 =Version 1.01  12/19/2001
 
@@ -60,7 +164,7 @@
 
 * Tag \\URL{url=target_name} (similar to \\L{url=target_name}<target_name>)
 
-= Version 0.11.01   08/02/2001
+=Version 0.11.01   08/02/2001
 
 *  Cleaning up the test suite (was broken in 0.11, sorry!)
 

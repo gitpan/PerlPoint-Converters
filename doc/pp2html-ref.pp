@@ -8,7 +8,7 @@ $TOP_BGCOLOR=#AFBDCA
 
 This is the reference manual for \C<pp2html>. The \C<pp2html> program is a tool to convert simple
 text files written in \PP format to a set of HTML files which can be presented with a
-normal web browerser. This can be used both for making presentations and for creating
+normal web browser. This can be used both for making presentations and for creating
 documents for the intranet or internet.
 
 The most important features of \C<pp2html> are:

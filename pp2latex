@@ -1,4 +1,7 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
+
+eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
 #
 # $Id: pp2latex,v 1.14 2001/12/19 21:04:43 lorenz Exp $
 # $Revision: 1.14 $
@@ -15,25 +18,27 @@ package PerlPoint::Converter::pp2latex;
 use Pod::Text;
 use Getopt::ArgvFile qw(argvFile);
 use Getopt::Long;
-use Data::Dumper;
+#use Data::Dumper;
                      
 
 # pragmata
 use strict;
 use subs "flush", "push_page", "pp_warn";
 
-# load modules
+# load modules {{{1
 use File::Basename;
 use Carp;
 use Safe;
+
+use PerlPoint::Constants 0.15;
 use PerlPoint::Tags;
 use PerlPoint::Tags::Basic;
 use PerlPoint::Tags::HTML;
 use PerlPoint::Tags::LaTeX;
 use PerlPoint::Backend;
-use PerlPoint::Parser 0.34;
-use PerlPoint::Constants;
-use PerlPoint::Converters qw(replace_keywords copy_file update_file mk_abs_path);
+use PerlPoint::Parser 0.39;
+use PerlPoint::Converters qw(replace_keywords copy_file update_file return_abs_path);
+#}}}1
 
 my $me = basename($0);
 
@@ -44,34 +49,56 @@ $main::VERSION = $VERSION;
 my $nix = "";                      # for using RCS keys in Usage, ...
 my $Date = "Date ";
 
-
 #============================================================= Usage
 
-sub Usage {
+sub Usage { #{{{1---------------------------------------------------
   no strict;
+  my $tmpdir = "/tmp";
   $^W = 0;
-  my $tmpfile = "/tmp/$me.$$_help";
+ #my $parser = Pod::Text->new (sentence => 0, loose => 0, width => 78);
+
+  if (defined $ENV{TMP}){
+    $tmpdir = $ENV{TMP};
+  } elsif (defined $ENV{TEMP}) {
+    $tmpdir = $ENV{TEMP};
+  }
+  my $tmpfile = "$tmpdir/$me.$$"."_help";
+  $SIG{INT}  =
+  $SIG{QUIT} =
+  $SIG{HUP}  =
+  $SIG{ABRT} =
+  $SIG{PIPE} = sub { unlink $tmpfile };
   open(ME, "< $0") or die "Can't open $me: $!\n";
   open(TMP, "> $tmpfile") or die "Can't open $tmpfile: $!\n";
+  my $skip = 1;
   while(<ME>){
+    if (/^=cut/){
+      $skip = 1 ;
+      print TMP $_;
+      next;
+    }
+    $skip = 0  if /^=/;
+    next if $skip;
     s/PROGRAM/$me/g;
     s/P_VERSION/$VERSION/g;
     print TMP $_;
   }
   close(TMP);
-  pod2text( $tmpfile );
+ #$parser->parse_from_file( $tmpfile );
+  pod2text($tmpfile );
+
   unlink $tmpfile;
-  exit;  # we're done
-} # Usage
+  exit;
+} # Usage }}}1
 
 #==================================================== Parameter Loop
 
-my %OPT = (
+my %OPT = ( #{{{1
 
   slide_dir       => ".",
   no_index        => 0,
 
-);
+); #}}}1
 
 argvFile( home => 1, default => 1);
 
@@ -80,7 +107,7 @@ if (defined $ARGV[0] and $ARGV[0] =~ /-v$/){
 }
 my $verbose = 1;
 
-GetOptions( \%OPT,
+die unless GetOptions( \%OPT, #{{{1
 
   "activeContents",
   "cache",
@@ -100,7 +127,7 @@ GetOptions( \%OPT,
   "help",
   "version",
 
-);
+); #}}}1
 
 # propagate options as necessary
 @OPT{qw(nocopyright noinfo nowarn)}=(1,1,1) if exists $OPT{quiet};
@@ -126,7 +153,7 @@ $li_end = "\n";
 # 000000000000000
 my $embedded_latex = 0;
 
-my (@streamData);
+my (@streamData, %variables);    # JSTENZEL: added %variables
 my $verbatim_flag = 0;
 
 my $page_ref;  # pointer to current page buffer
@@ -169,7 +196,7 @@ if (exists $OPT{safeOpcode}){
 }
 
 # and call it
-$parser->run(
+$parser->run( #{{{1
              stream  => \@streamData,
              files   => \@ARGV,
              safe    => exists $OPT{activeContents} ? $safe : undef,
@@ -185,6 +212,7 @@ $parser->run(
                                  CONVERTER_NAME    => basename($0),
                                  CONVERTER_VERSION => $main::VERSION,
                                 },
+             headlineLinks => 1,
              trace   => TRACE_NOTHING
                       + ((exists $OPT{trace} and $OPT{trace} &  1) ? TRACE_PARAGRAPHS : 0) 
                       + ((exists $OPT{trace} and $OPT{trace} &  2) ? TRACE_LEXER      : 0)
@@ -196,21 +224,21 @@ $parser->run(
                       + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
              cache   => (exists $OPT{cache} ? CACHE_ON : CACHE_OFF)
                       + (exists $OPT{cacheCleanup} ? CACHE_CLEANUP : 0),
-            ) or exit 1;
+            ) or exit 1; #}}}1
 
 
 # build a backend
-my $backend=new PerlPoint::Backend(
+my $backend=new PerlPoint::Backend( #{{{1
              name    => $me, 
              trace   => TRACE_NOTHING,
              display => DISPLAY_ALL
                       + (exists $OPT{noinfo} ? DISPLAY_NOINFO : 0)
                       + (exists $OPT{nowarn} ? DISPLAY_NOWARN : 0),
              vispro  => 1,
-);
+); #}}}1
 #my $backend=new PerlPoint::Backend(name=>$me, trace=>TRACE_BACKEND);
 
-# register backend handlers
+# register backend handlers {{{1
 $backend->register(DIRECTIVE_BLOCK,        \&handleBlock);
 $backend->register(DIRECTIVE_COMMENT,      \&handleComment);
 $backend->register(DIRECTIVE_DOCUMENT,     \&handleDocument);
@@ -227,7 +255,10 @@ $backend->register(DIRECTIVE_DPOINT_ITEM,  \&handleDPointItem);
 $backend->register(DIRECTIVE_SIMPLE,       \&handleSimple);
 $backend->register(DIRECTIVE_TAG,          \&handleTag);
 $backend->register(DIRECTIVE_TEXT,         \&handleText);
+$backend->register(DIRECTIVE_VARRESET,     \&handleVarReset);    # JSTENZEL
+$backend->register(DIRECTIVE_VARSET,       \&handleVarSet);      # JSTENZEL
 $backend->register(DIRECTIVE_VERBATIM ,    \&handleVerbatim);
+#}}}1
 
 my @BUFFER;
 my @ERRBUFFER;  # buffer for context of error 
@@ -235,8 +266,8 @@ my $box_bg_color= "blue";
 my $box_fg_color= "white";
 
 # and run it
-$backend->run(\@streamData,
-);
+$backend->run(\@streamData, #{{{1
+); #}}}1
 
 begin_doc();
 
@@ -258,12 +289,37 @@ for (my $i = 0; $i <= $page_cnt; $i++){
         next;
       }
       my $hd = $PAGES[$ANCHOR{$a_name}] -> {HD};
-      $line =~ s/_INTERN_SECTION:.*?:_END/$hd/;
+      my $ref = "PPPage$ANCHOR{$a_name}";    
+      $line =~ s/_INTERN_SECTION:.*?:_END/$hd}{$ref/;  # two arguments, text and ID
     }
 
     # Replace _INTERNAL_PAGE with correct hyperlink
+    while ($line =~ /_INTERNAL_PAGE:(.*?):_END/){
+      my $a_name = $1;
+
+      if (! defined $ANCHOR{$a_name}) {
+        warn "**** PAGE with undefined anchor name '$a_name' detected\n";
+        $line =~ s/_INTERNAL_PAGE:.*?:_END/_UNDEF_/;  # will flag an error while processing with latex !
+        next;
+      }
+      my $anch= $ANCHOR{$a_name};
+      my $ref="PPPage$ANCHOR{$a_name}";
+      $line =~ s/_INTERNAL_XREF:.*?:_END/$ref/;
+    }
 
     # Replace _INTERNAL_XREF with correct hyperlink
+    while ($line =~ /_INTERNAL_XREF:(.*?):_END/){
+      my $a_name = $1;
+
+      if (! defined $ANCHOR{$a_name}) {
+        warn "**** XREF with undefined anchor name '$a_name' detected\n";
+        $line =~ s/_INTERNAL_XREF:.*?:_END/_UNDEF_/;  # will flag an error while processing with latex !
+        next;
+      }
+      my $ref="PPPage$ANCHOR{$a_name}";
+      $line =~ s/_INTERNAL_XREF:.*?:_END/$ref/;
+    }
+
 
     print $line;
   } # loop over body lines
@@ -278,8 +334,7 @@ exit 0;
 # SUBROUTINES ##############################################################
 
 # helper function
-#----------------------------------------------------------
-sub begin_doc{
+sub begin_doc{ #{{{1---------------------------------------------
   print "% Created by $me, build $VERSION from PerlPoint-Converters $PACK_VERSION\n";
   if (defined $OPT{prolog}) {
     # get prolog definitions from file
@@ -326,34 +381,26 @@ sub begin_doc{
 
 EOT
   }
-} # begin_doc
+} # begin_doc }}}1
 
-# flushleft ist fix alex
-
-#----------------------------------------------------------
-sub end_doc{
+sub end_doc{ #{{{1-----------------------------------------------
 
 # fix alex
-print "\n\n\\end{flushleft}\n";
+# flushleft ist fix alex
+  print "\n\n\\end{flushleft}\n";
 
-print "\n\n\\end{document}\n";
-} # end_doc
+  print "\n\n\\end{document}\n";
+} # end_doc }}}1
 
-
-#----------------------------------------------------------
-sub gen_index {
+sub gen_index { #{{{1--------------------------------------------
 # print "\n\\section{INDEX}\n\n";
 # foreach my $idx (sort keys %INDEX) {
 #   print "$idx \\textbf{ \\pageref{$INDEX{$idx}}}\\\\\n";
 # }
   print "\n\\printindex\n\n";
-} # gen_index
+} # gen_index }}}1
 
-#----------------------------------------------------------
-
-
-#----------------------------------------------------------
-sub start_new_page {
+sub start_new_page { #{{{1---------------------------------------
   my ($level, @BF) = @_;
   $page_cnt ++;
   $PAGES[$page_cnt] = {
@@ -366,22 +413,22 @@ sub start_new_page {
   my $hd = $PAGES[$page_cnt] -> {HD};
   $ANCHOR{$hd} = $page_cnt; # insert anchor for this page
  #push @{$PAGES[$page_cnt]->{BODY}}, "<a name=\"$hd\">";
-} # start_new_page
+} # start_new_page }}}1
 
-#----------------------------------------------------------
-# simple directive handlers
-sub handleSimple {
+sub handleSimple { #{{{1-----------------------------------------
+# simple directive handler
   push @BUFFER, escapes($_[2]);
-} # handleSimple
+} # handleSimple }}}1
 
-#----------------------------------------------------------
-sub handleHeadline {
+sub handleHeadline { #{{{1---------------------------------------
   # $_[2] contains the level number of this header
   if ($_[1]==DIRECTIVE_START) {
     flush;
   } else {
+   #print "==>@BUFFER<==\n";
     start_new_page($_[2], @BUFFER);
     my $section;
+    $_[2]--; # in case of report ... TODO: option which tells type of document
     if      ($_[2] == 0){
       $section = 'chapter';
     } elsif ($_[2] == 1){
@@ -400,11 +447,11 @@ sub handleHeadline {
     push_page $page_ref, "\n\n\\$section\{";
     flush;
     push_page $page_ref, "}\n";
+    push_page $page_ref, "\\label{PPPage$page_cnt}\n";
   }
-} # handleHeadline
+} # handleHeadline }}}1
 
-#----------------------------------------------------------
-sub handleList {
+sub handleList { #{{{1-------------------------------------------
   flush;
   my $LIST;
   if ($_[0]==DIRECTIVE_ULIST){
@@ -421,10 +468,9 @@ sub handleList {
     @BUFFER = ();
   }
   
-} # handleList
+} # handleList }}}1
 
-#----------------------------------------------------------
-sub handlePoint {
+sub handlePoint { #{{{1------------------------------------------
   flush;
   if ($_[1]==DIRECTIVE_START){
     push_page $page_ref, $li_start;
@@ -432,10 +478,9 @@ sub handlePoint {
     push_page $page_ref, $li_end;
     @BUFFER = ();
   }
-} # handlePoint
+} # handlePoint }}}1
 
-#----------------------------------------------------------
-sub handleDPoint {
+sub handleDPoint { #{{{1-----------------------------------------
   flush;
   if ($_[1]==DIRECTIVE_START){
     push_page $page_ref, "\\item ";
@@ -443,10 +488,9 @@ sub handleDPoint {
     push_page $page_ref, "\n\n";
     @BUFFER = ();
   }
-} # handleDPoint
+} # handleDPoint }}}1
 
-#----------------------------------------------------------
-sub handleDPointItem {
+sub handleDPointItem { #{{{1-------------------------------------
   flush;
   if ($_[1]==DIRECTIVE_START){
     # no action
@@ -454,42 +498,37 @@ sub handleDPointItem {
     push_page $page_ref, "\n\n";
     @BUFFER = ();
   }
-} # handleDPointItem
+} # handleDPointItem }}}1
 
-#----------------------------------------------------------
-sub handleText {
+sub handleText { #{{{1-------------------------------------------
   flush;
   if ($_[1]==DIRECTIVE_START){
     push_page $page_ref, "\n";
   } else {
     push_page $page_ref, "\n";
   }
-} # handleText
+} # handleText }}}1
 
-#----------------------------------------------------------
-sub handleBlock { # code block with TAG recognition
+sub handleBlock { # code block with TAG recognition {{{1---------
 #TODO Es muessen alle PerlPoint tags aus dem BUFFER des
 #     Blocks entfernt werden, da Latex in \begin{verbatim} ...
 #     keine Ersetzungen wie \textbf etc. vornehmen kann !!
   handleVerbatim( $_[0], $_[1], $_[2]);
-} # handleBlock
+} # handleBlock }}}1
 
-#----------------------------------------------------------
-sub handleLShift {
+sub handleLShift { #{{{1-----------------------------------------
   if ($_[1]==DIRECTIVE_START){
     push_page $page_ref, "\n\% Shift <\n";
   }
-} # handleLShift
+} # handleLShift }}}1
 
-#----------------------------------------------------------
-sub handleRShift {
+sub handleRShift { #{{{1-----------------------------------------
   if ($_[1]==DIRECTIVE_START){
     push_page $page_ref, "\n\% Shift >\n";
   }
-} # handleRShift
+} # handleRShift }}}1
 
-#----------------------------------------------------------
-sub handleVerbatim { # verbatim block without TAG recognition
+sub handleVerbatim { # verbatim block without TAG recognition {{{1
   flush;
   if ($_[1]==DIRECTIVE_START){
     $verbatim_flag = 1;
@@ -500,15 +539,13 @@ sub handleVerbatim { # verbatim block without TAG recognition
 #   push_page $page_ref, "\\rule{\\textwidth}{1pt}\n";
     $verbatim_flag = 0;
   }
-} # handleVerbatim
+} # handleVerbatim }}}1
 
-#----------------------------------------------------------
-sub handleComment {
+sub handleComment { #{{{1----------------------------------------
     @BUFFER = (); # skip buffer contents
-} # handleComment
+} # handleComment }}}1
 
-#----------------------------------------------------------
-sub e_escapes{
+sub e_escapes{ #{{{1---------------------------------------------
   my ($flag) = @_;
   if ($flag eq "micro"){
     return "\$\\mu\$";
@@ -531,10 +568,9 @@ sub e_escapes{
   } else {
     return "__ this was HTML escape: $flag __";  #  --> syntax error in latex
   }
-} # e_escapes
+} # e_escapes }}}1
 
-#----------------------------------------------------------
-sub handleTag {
+sub handleTag { #{{{1--------------------------------------------
 
   # special tags
 
@@ -749,36 +785,13 @@ sub handleTag {
       if ( !defined $_[3]->{'url'}) {
         warn "*** ERROR: Hyperlink \L without 'url' parameter\n";
       }
-      # my $link_text = join("",@BUFFER);
+      my $link_text = join("",@BUFFER);
 
 # fix alex!! 2001-04-17
 
       my $url = $_[3]->{'url'};
-
-      # print "\n", Dumper($url), "\n";
-
-      my $offset = 80; # 80 Zeichen breite URLs, dann Zeilenumbruch
-
-      sub format_url {
-        my ($url, $offset) = @_;
-        my $breaksign = " \\linebreak ";
-        my $newurl = "";
-        while (length($url) > $offset) {
-          $newurl .= substr($url, 0, $offset) . $breaksign;
-          substr($url, 0, $offset) = '';
-        }
-        return $newurl . $url;
-      } # format_url
-
-
-      push_page $page_ref, 
-                           # "\\begin{flushright}",
-                           "{\\scriptsize \\begin{math} [URL: ",
-                           format_url(escapes($url), $offset),
-                           "] \\end{math} } ";
-                           # "\\end{flushright} ";
-
-      # @BUFFER=();
+      push_page $page_ref, "\\PPurl{" . $link_text .  "}{" . escapes($url) . "}";
+      @BUFFER=();
 
     } else {
       flush;
@@ -791,7 +804,7 @@ sub handleTag {
         warn "*** ERROR: PAGEREF without 'name' parameter\n";
       }
       my $a_name = $_[3]->{'name'};
-      push_page $page_ref, "\\ref{$a_name}";
+      push_page $page_ref, "\\PPPageref{_INTERNAL_PAGE:$a_name:_END}"; # to be replaced later ...
     } else {
       flush;
     }
@@ -803,7 +816,7 @@ sub handleTag {
         warn "*** ERROR: PAGEREF without 'name' parameter\n";
       }
       my $a_name = $_[3]->{'name'};
-      push_page $page_ref, "_INTERN_SECTION:$a_name:_END"; # to be replaced later ...
+      push_page $page_ref, "\\PPSref{_INTERN_SECTION:$a_name:_END}"; # to be replaced later ...
     } else {
       flush;
     }
@@ -816,7 +829,7 @@ sub handleTag {
       }
       my $ref_text = join("",@BUFFER);
       my $a_name = $_[3]->{'name'};
-      push_page $page_ref, "\\pageref{$a_name} $ref_text";
+      push_page $page_ref, "\\PPXref{$ref_text}{_INTERNAL_XREF:$a_name:_END}";
       @BUFFER = ();
     } else {
       flush;
@@ -931,10 +944,9 @@ sub handleTag {
   }
 
   warn "**** $me: unkown or not yet implemented tag: $_[2]\n";
-} # handleTag
+} # handleTag }}}1
 
-#----------------------------------------------------------
-sub handleDocument {
+sub handleDocument { #{{{1---------------------------------------
   if ($_[1]==DIRECTIVE_START) {
     warn "\n[Info] Document start ($_[2]).\n" if $verbose;
 
@@ -943,10 +955,9 @@ sub handleDocument {
 
     warn "\n[Info] Document end ($_[2]).\n" if $verbose;
   }
-} # handleDocument
+} # handleDocument }}}1
 
-#----------------------------------------------------------
-sub flush {
+sub flush { #{{{1------------------------------------------------
   push_page $page_ref, @BUFFER;
   push @ERRBUFFER, @BUFFER;
   @BUFFER = ();
@@ -955,23 +966,21 @@ sub flush {
   for (my $k=1;$k<scalar(@ERRBUFFER)-6;$k++){
     shift @ERRBUFFER;
   }
-}
+} # flush }}}1
 
-#----------------------------------------------------------
-sub push_page {
+sub push_page { #{{{1--------------------------------------------
   # push $text to current page buffer
   my ($page_ref, @text) = @_;
   push @$page_ref, @text;
-} # push_page
+} # push_page }}}1
 
-#---------------------------------------------------------------
-sub save {
+sub save { #{{{1-------------------------------------------------
     my $it = $_[0];
     $it =~ y/\000-\177/\200-\377/;
     return $it;
-} # save
-#----------------------------------------------------------
-sub escapes {
+} # save }}}1
+
+sub escapes { #{{{1----------------------------------------------
   my $line = shift;
   return $line if $embedded_latex;
   return $line if $verbatim_flag;
@@ -998,27 +1007,36 @@ sub escapes {
     $line =~ y/\200-\377/\000-\177/;
 
     return $line;
-} #" escapes
+} # escapes }}}1
 
-#----------------------------------------------------------
-sub insert_template {
+sub insert_template { #{{{1--------------------------------------
   my ($f, $page_no, $what) = @_;
-} # insert_template
-#----------------------------------------------------------
+} # insert_template }}}1
 
-#----------------------------------------------------------
-sub pp_warn {
+sub pp_warn { #{{{1----------------------------------------------
   my ($message) = @_;
   print STDERR "*** $me: $message\n";
   print STDERR "context: ------\n@ERRBUFFER\n---------------\n";
-} # pp_warn
+} # pp_warn }}}1
 
+sub handleVarReset { #{{{1------------------------------------------
+# JSTENZEL
+ # flag that all declared variables were deleted
+ # (flag it by an array reference, which cannot be passed as
+ # a variable value)
+ push(@{$variables{$_}}, [$page_cnt, []]) foreach keys %variables;
+} # handleVarReset }}}1
+
+sub handleVarSet { #{{{1--------------------------------------------
+# JSTENZEL
+ # store new value
+ push(@{$variables{$_[2]{var}}}, [$page_cnt, $_[2]{value}]);
+} # handleVarset }}}1
 
 __END__
 
 
-
-# = POD SECTION ============================================================
+# POD SECTION {{{1=============================================
 
 =head1 NAME
 
@@ -1027,7 +1045,7 @@ B<pp2latex> - PerlPoint to LaTeX converter
 =head1 VERSION
 
 This man page describes $Revision: 1.14 $
-from PerlPoint::Converters Package 1.01
+from PerlPoint::Converters Package 1.0204
 
 
 =head1 SYNOPSIS
@@ -1196,8 +1214,9 @@ Lorenz Domke (lorenz.domke@gmx.de), 2001. All rights reserved.
 
 =cut
 
+#}}}1
 
-# = HISTORY SECTION ========================================================
+# HISTORY SECTION {{{1===========================================
 
 # --------------------------------------------------------------------------
 # version | date   | author | changes
@@ -1262,3 +1281,5 @@ Revision 1.1  2000/04/27 21:28:36  lorenz
 Initial revision
 
 
+#}}}1
+# vim:foldmethod=marker:foldcolumn=4

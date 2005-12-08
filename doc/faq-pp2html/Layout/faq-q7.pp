@@ -1,5 +1,5 @@
 
-// vim: set filetype=pp2html:
+// vim: set filetype=PerlPoint:
 
 
 =Creating a New Style
@@ -52,7 +52,7 @@ in a separate directory:
 * There must be an options file with the following naming
   convention: \I<<style-name\>>\B<.cfg>
 
-* The style directory should be a subdirectory of the the
+* The style directory should be a subdirectory of the
   directory where you start \I<pp2html> or it should be a
   subdirectory of a style collection directory so that you
   can use the \C<--style_dir=>\I<<style_collection_dir\>> option.

@@ -1,6 +1,6 @@
 package PerlPoint::Converters;
 
-$VERSION = "1.01";
+$VERSION = "1.0204";
 
 use File::Copy;
 use Cwd;
@@ -12,7 +12,9 @@ use Exporter;
   replace_keywords
   update_file
   copy_file
-  mk_abs_path
+  return_abs_path
+  relative_path
+  is_abs_path
 );
 use strict;
 
@@ -329,7 +331,7 @@ useful for most PerlPoint converters.
 
 =cut
 
-#----------------------------------------------------------
+sub replace_keywords { #{{{-----------------------------------------
 
 =head2 replace_keywords($line, $KEY_HASH_REF);
 
@@ -368,6 +370,8 @@ The supported keywords are:
   TOP_RIGHT_TXT
   TOP_MIDDLE_TXT
 
+  BGCOLOR
+  FGCOLOR
   BOT_BGCOLOR
   TOP_BGCOLOR
   IDX_BGCOLOR
@@ -376,6 +380,21 @@ The supported keywords are:
   TOP_FGCOLOR
   IDX_FGCOLOR
   TOC_FGCOLOR
+  LINKCOLOR
+  TOP_LINKCOLOR
+  BOT_LINKCOLOR
+  TOC_LINKCOLOR
+  IDX_LINKCOLOR
+  ALINKCOLOR
+  TOP_ALINKCOLOR
+  BOT_ALINKCOLOR
+  TOC_ALINKCOLOR
+  IDX_ALINKCOLOR
+  VLINKCOLOR
+  TOP_VLINKCOLOR
+  BOT_VLINKCOLOR
+  TOC_VLINKCOLOR
+  IDX_VLINKCOLOR
 
   LABEL_NEXT
   LABEL_PREV
@@ -387,10 +406,10 @@ The supported keywords are:
 
   LOGO_IMAGE_FILENAME
   IMAGE_REF
+  META_TAGS
 
 =cut
 
-sub replace_keywords {
   my ($line, $OPT) = @_;
   my @KW = qw(
   TXT_CONTENTS
@@ -407,6 +426,8 @@ sub replace_keywords {
   TOP_RIGHT_TXT
   TOP_MIDDLE_TXT
 
+  BGCOLOR
+  FGCOLOR
   BOT_BGCOLOR
   TOP_BGCOLOR
   IDX_BGCOLOR
@@ -415,6 +436,21 @@ sub replace_keywords {
   TOP_FGCOLOR
   IDX_FGCOLOR
   TOC_FGCOLOR
+  LINKCOLOR
+  TOP_LINKCOLOR
+  BOT_LINKCOLOR
+  TOC_LINKCOLOR
+  IDX_LINKCOLOR
+  ALINKCOLOR
+  TOP_ALINKCOLOR
+  BOT_ALINKCOLOR
+  TOC_ALINKCOLOR
+  IDX_ALINKCOLOR
+  VLINKCOLOR
+  TOP_VLINKCOLOR
+  BOT_VLINKCOLOR
+  TOC_VLINKCOLOR
+  IDX_VLINKCOLOR
 
   LABEL_NEXT
   LABEL_PREV
@@ -426,18 +462,19 @@ sub replace_keywords {
 
   LOGO_IMAGE_FILENAME
   IMAGE_REF
+  META_TAGS
 
   );
-  $line =~ s/\bSLIDE_PREFIX/$$OPT{slide_prefix}/g;
+  $line =~ s/SLIDE_PREFIX/$$OPT{slide_prefix}/g;
      # special word boumdary for SLIDE_PREFIX ...
   foreach my $kw (@KW){
     $line =~ s/\b$kw\b/$$OPT{lc($kw)}/g if defined $$OPT{lc($kw)};
   }
   return $line;
 
-} # replace_keywords 
+} # replace_keywords  }}}
 
-#----------------------------------------------------------
+sub copy_file { #{{{ -----------------------------------------------
 
 =head2 copy_file($from, $to, $verbose, $KEY_HASH_REF);
 
@@ -450,7 +487,7 @@ Prints a message to STDERR if $verbose is set to 1.
 
 =cut
 
-sub copy_file { # should work on each system ...
+  # should work on each system ...
   my ($from, $to, $verbose, $OPT) = @_;
   print STDERR "... copying $from to $to\n" if $verbose;
   if (! -T $from){
@@ -463,11 +500,11 @@ sub copy_file { # should work on each system ...
     }
     close(FROM); close(TO);
   }
-} # copy_file
+} # copy_file }}}
 
-#----------------------------------------------------------
+sub update_file { #{{{ ---------------------------------------------
 
-=head2 update_file($from, $to, $verbose, $KEY_HAHS_REF);
+=head2 update_file($from, $to, $verbose, $KEY_HASH_REF, $moveFlag);
 
 Update file C<$from> to file C<$to> if necessary. For binary files (! -T)
 the File::Copy method will be used. Files are only copied if the
@@ -479,12 +516,17 @@ changed. All lines are treated with the C<replace_keywords> method.
 
 Prints a message to STDERR if $verbose is set to 1.
 
+The source file is removed if the $moveFlag was set to a true value,
+which means that the function performs a move instead of a copy.
+
 =cut
 
-sub update_file { # 
-  my ($from, $to, $verbose, $OPT) = @_;
+  my ($from, $to, $verbose, $OPT, $move) = @_;
   # check, if update is really needed:
   return if $to eq $from;
+  if (! -e $from) {
+    croak "\n**** file not  found: $from\n"; ## should not occur!
+  }
   # copy:
   if (! -T $from){ # binary file ?
     if (-e $to){
@@ -505,17 +547,132 @@ sub update_file { #
     }
     close(FROM); close(TO);
   }
-} # update_file
 
+  # delete file, if necessary
+  unlink($from) if defined($move) and $move;
+} # update_file }}}
 
-sub mk_abs_path {
+sub return_abs_path { #{{{ -----------------------------------------
+
+=head1 $abs_path = return_abs_path($pathname)
+
+Given a relative or absolute pathname: return absolute pathname
+$pathname must exist and either be absolute or relative to
+current working directory.
+
+=cut
+
   my $path = shift;
   my $cwd = cwd;
   chdir $path or croak "Cannot cd to $path\n";
   my $abspath = cwd;
   chdir $cwd or croak "Cannot cd back to $cwd\n";
   return $abspath;
-} # mk_abs_path
+} # return_abs_path }}}
+
+sub is_abs_path { #{{{-----------------------------------------------
+
+=head1 is_abs_path($pathname)
+
+Return 1 if $pathname is an absolute pathname, i. e. it starts with
+a slash "/" or with a character, followed by a colon and and a slash
+or backslash: "C:/bla bla" or "T:\foo\bar". Otherwise return 0.
+
+=cut
+
+  my $path = shift;
+  return 1 if
+    $path =~ m#^\s*/# or
+    $path =~ m#^\s*[a-z]:[/\\]#i;
+  return 0;
+} # is_abs_path }}}
+
+sub relative_path { #{{{--------------------------------------------
+
+=head1 $rel_path = relative_path($path1, $path2)
+
+Return relative path from $path1 to $path2.
+
+    path           C:/this/is/my/test/foo
+    path2          C:/this/is/my/test/images/new
+    ==> rel_path   ../images/new
+
+=cut
+
+  my ($path1, $path2) = @_;
+  my $rel = "";
+  my ($p1, $p2) = ("$path1/", "$path2/");
+
+  if (! is_abs_path($path1)){
+    if (-d $path1) {
+      $p1 = return_abs_path($path1) . "/";
+    } else {
+        # try to construct abs path:
+       $p1 = cwd() . "/$path1/";
+    }
+  }
+  if (! is_abs_path($path2)){
+    if (-d $path2) {
+      $p2 = return_abs_path($path2) . "/";
+    } else {
+        # try to construct abs path:
+       $p2 = cwd() . "/$path2/";
+    }
+  }
+
+#print "p1: $p1\n";
+#print "p2: $p2\n";
+  # reduce multiple / and \ to single /
+  $p1 =~ s#[\\]+#/#g;
+  $p1 =~ s#/+#/#g;
+  $p2 =~ s#[\\]+#/#g;
+  $p2 =~ s#/+#/#g;
+#print "1  p1: $p1\n";
+#print "1  p2: $p2\n";
+  return "." if uc($p1) eq uc($p2);
+
+      
+# First: cut common part of pathname
+  while($p1 and $p2){
+    my $h1 = "";
+    my $h2 = "";
+    if ($p1 =~ m#([^/]+)/#){
+       $h1 = $1;
+    }
+    if ($p2 =~ m#([^/]+)/#){
+       $h2 = $1;
+    }
+#print "11  h1: $h1\n";
+#print "11  h2: $h2\n";
+    if (uc($h1) eq uc($h2)){
+      # is ok for windows and should work under UNIX as long as
+      # there are not two different dir names which are only distinct in
+      # letter case
+      substr($p1, 0, length($h1)+1) = "";  # cut leading part/
+      substr($p2, 0, length($h2)+1) = "";  # cut leading part/
+    } else {
+      last;
+    }
+#print "11  p1: $p1\n";
+#print "11  p2: $p2\n";
+  }
+#print "2  p1: $p1\n";
+#print "2  p2: $p2\n";
+# Second: construct relative pathname from $p1 to $p2:
+#    go up from $p1 to common root:
+   $p1 =~ s#^/##;
+   $p2 =~ s#^/##;
+   while(index($p1, "/")>=0){
+#print "33  p1: $p1\n";
+     $rel .= "../";
+     substr($p1, 0, index($p1,"/")+1) = "";
+   }
+#    append path to $p2
+  $rel .= $p2;
+  $rel =~ s#/$##;
+#print "---rel: $rel\n";
+  return $rel;
+} # relative_path }}}
 
 =head1 AUTHOR
 
@@ -528,4 +685,5 @@ Lorenz Domke <lorenz.domke@gmx.de>
 
 __END__
 
+# vim:foldmethod=marker:foldcolumn=4
 

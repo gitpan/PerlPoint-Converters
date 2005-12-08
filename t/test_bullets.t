@@ -3,21 +3,25 @@
 # test of bullets
 
 use strict;
-use Test;
 
 use lib "./t";
 use pptest;
 
 my $n;
 BEGIN{ 
-  $n = `$^X -e 'while(<>){\$i++ if /^=/}print \$i' t/test_bullets.pp` + 1;
-  plan test => $n }
+  my $h = $^O =~ /win/i ? '"' : "'";
+  $n = `$^X -e ${h}while(<>){\$i++ if /^=/}print \$i$h t/test_bullets.pp` + 1;
+  }
+use Test::Simple tests => $n;
 
-system " $^X -Iblib/lib ./pp2html -slide_prefix bullets_ -slide_dir t --quiet -bullet ./images/dot2.jpg -bullet ./images/dot01.gif t/test_bullets.pp";
+system " $^X -Iblib/lib ./pp2html -slide_prefix bullets_ -slide_dir t/d_bullets --quiet -bullet ./images/dot2.jpg -bullet ./images/dot01.gif t/test_bullets.pp";
 
 for(my $i=1; $i <= $n; $i++){
   my $nn = sprintf "%04d", $i-1;
-  ok( cmp_files("t/bullets_$nn.htm"));
-  unlink "t/bullets_$nn.htm", "t/dot01.gif", "t/dot2.jpg" unless $ENV{PP_DEBUG};
+  my $ok = ok( cmp_files("t/d_bullets/bullets_$nn.htm"), "bullets_$nn.htm");
+  unlink "t/d_bullets/bullets_$nn.htm" unless $ENV{PP_DEBUG} or !$ok;
 }
-unlink "index.htm";
+unlink "t/d_bullets/dot01.gif", "t/d_bullets/dot2.jpg" unless $ENV{PP_DEBUG};
+unlink "t/d_bullets/index.htm";
+
+# vim:ft=perl

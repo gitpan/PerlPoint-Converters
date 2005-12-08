@@ -1,0 +1,69 @@
+% Created by pp2latex, build 1.14 from PerlPoint-Converters 1.02
+\documentclass [11pt] {article}   % 
+\usepackage{german}               % ISO-Latin-Zeichensatz (дцья)
+\usepackage{isolatin1}            % ISO-Latin-Zeichensatz (дцья)
+\parindent0pt                     % no indentation of first line
+\parskip1ex                       % white space between chapters
+\pagestyle{headings}     %
+\usepackage{epsf}
+\usepackage{makeidx}
+
+% setup for DIN A4
+\oddsidemargin3cm
+\evensidemargin3cm
+\setlength{\hoffset}{-1in}            % compensation of
+\setlength{\voffset}{-2cm}            % printer offset
+
+\textwidth15cm
+\topmargin1cm
+\headheight3ex
+\headsep12pt
+\textheight23cm
+\setlength{\footskip}{1.5cm}
+
+\makeindex
+
+\begin{document}
+
+\begin{flushleft}
+
+
+
+\section{Empty Table Fields}
+
+
+\vspace{1ex}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\bf Head1 & \bf \\\hline
+ & xx\\\hline
+zz & \\\hline
+
+
+\end{tabular}
+
+
+text
+
+
+\section{Table with Table Tag}
+
+
+\vspace{1ex}
+\begin{tabular}{|c|c|c|c|}
+\hline
+kkk | uuu & vvv & ggg\\\hline
+RRRR & xx & ii\\\hline
+
+
+\end{tabular}
+
+
+\printindex
+
+
+
+\end{flushleft}
+
+
+\end{document}

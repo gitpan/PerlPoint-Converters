@@ -13,7 +13,7 @@ $ok=WriteMakefile(
     'NAME'	=> 'PerlPoint-Converters',
     'VERSION_FROM' => 'lib/PerlPoint/Converters.pm',
      PREREQ_PM     => {
-                         PerlPoint::Parser => 0.36,
+                         PerlPoint::Parser => 0.40,
                          Getopt::ArgvFile => 1.01,
                       },
     dist           => {
@@ -74,5 +74,8 @@ sub fix_version {
   close D;
   close W;
   unlink "$file.bak";
+  if ($^O =~ /linux/i){
+    system "chmod +x $file";
+  }
 }
 
