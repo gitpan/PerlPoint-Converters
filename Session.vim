@@ -21,28 +21,28 @@ imap <C-PageUp> H
 noremap  gggHG
 vnoremap  "+y
 noremap  
-vnoremap  :update
-nnoremap  :update
-onoremap  :update
+vnoremap  :update
+nnoremap  :update
+onoremap  :update
 nmap  "+gP
 omap  "+gP
 vnoremap  "+x
 noremap  
 noremap  u
-cnoremap   :simalt ~
-inoremap   :simalt ~
-map ,x :e $VIM/_gvimrc
-map ,n :e \\agb-svr-3\88x\developer\Lorenz_Domke\notes.txt
-map ,ht :helptags \\agb-svr-3\88x\developer\Lorenz_Domke
+cnoremap   :simalt ~
+inoremap   :simalt ~
+map ,x :e $VIM/_gvimrc
+map ,n :e \\agb-svr-3\88x\developer\Lorenz_Domke\notes.txt
+map ,ht :helptags \\agb-svr-3\88x\developer\Lorenz_Domke
 map Q gq
-map \bv :VSBufExplorer
-map \bs :SBufExplorer
-map \be :BufExplorer
+map \bv :VSBufExplorer
+map \bs :SBufExplorer
+map \be :BufExplorer
 map \dk <Plug>DirDiffPrev
 map \dj <Plug>DirDiffNext
 map \dp <Plug>DirDiffPut
 map \dg <Plug>DirDiffGet
-vnoremap p :let current_reg = @"gvs=current_reg
+vnoremap p :let current_reg = @"gvs=current_reg
 noremap <C-F4> c
 noremap <C-Tab> w
 map <S-Insert> <MiddleMouse>
@@ -66,11 +66,11 @@ nmap <C-PageUp> H
 vmap <C-PageUp> H
 cnoremap  gggHG
 inoremap  gggHG
-inoremap  :update
+inoremap  :update
 cmap  +
 inoremap  
 inoremap  u
-noremap   :simalt ~
+noremap   :simalt ~
 let &cpo=s:cpo_save
 unlet s:cpo_save
 set autoindent
@@ -93,11 +93,11 @@ set whichwrap=b,s,<,>,[,]
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
-cd "C:\Dokumente und Einstellungen\domke.nb003\Eigene Dateien\Projekte\PerlPoint-Converters"
+"cd "C:\Dokumente und Einstellungen\domke.nb003\Eigene Dateien\Projekte\PerlPoint-Converters"
 set shortmess=aoO
 badd +0 pp2html
 args pp2html
-set lines=55 columns=143
+"set lines=55 columns=143
 set splitbelow splitright
 set nosplitbelow
 set nosplitright

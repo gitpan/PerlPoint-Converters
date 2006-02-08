@@ -1,6 +1,6 @@
 package PerlPoint::Converters;
 
-$VERSION = "1.0204";
+$VERSION = "1.0205";
 
 use File::Copy;
 use Cwd;
@@ -466,7 +466,7 @@ The supported keywords are:
 
   );
   $line =~ s/SLIDE_PREFIX/$$OPT{slide_prefix}/g;
-     # special word boumdary for SLIDE_PREFIX ...
+     # special word boundary for SLIDE_PREFIX ...
   foreach my $kw (@KW){
     $line =~ s/\b$kw\b/$$OPT{lc($kw)}/g if defined $$OPT{lc($kw)};
   }
@@ -554,7 +554,7 @@ which means that the function performs a move instead of a copy.
 
 sub return_abs_path { #{{{ -----------------------------------------
 
-=head1 $abs_path = return_abs_path($pathname)
+=head2 $abs_path = return_abs_path($pathname)
 
 Given a relative or absolute pathname: return absolute pathname
 $pathname must exist and either be absolute or relative to
@@ -572,7 +572,7 @@ current working directory.
 
 sub is_abs_path { #{{{-----------------------------------------------
 
-=head1 is_abs_path($pathname)
+=head2 is_abs_path($pathname)
 
 Return 1 if $pathname is an absolute pathname, i. e. it starts with
 a slash "/" or with a character, followed by a colon and and a slash
@@ -589,7 +589,7 @@ or backslash: "C:/bla bla" or "T:\foo\bar". Otherwise return 0.
 
 sub relative_path { #{{{--------------------------------------------
 
-=head1 $rel_path = relative_path($path1, $path2)
+=head2 $rel_path = relative_path($path1, $path2)
 
 Return relative path from $path1 to $path2.
 

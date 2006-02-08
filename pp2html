@@ -127,6 +127,7 @@ my %OPT_MAIN;
 my %OPT_STYLE;
 
 %OPT = ( #
+  define => [],
 
   no_contents_indent => 0,
   contents_indent => 0,
@@ -276,6 +277,8 @@ my @OPTIONS = ( #
 
 
   ## ------------------------- Colors
+
+  "define=s@",   # generic color definition for options file and templates
 
   "box_color=s",
   "boxtext_color=s",
@@ -465,8 +468,23 @@ exit if $OPT_MAIN{version};
 
 $verbose = 0 if ($OPT_MAIN{quiet} or $OPT_MAIN{noinfo});
 
+
+# handle define options:
+
+my %OPT_DEFINE;
 # check slide dir and create it if necessary:
 # TODO test on Win9X and NT systems (problems with path names?)
+if (defined $OPT_MAIN{define}){
+#use Data::Dumper;
+#print Dumper $OPT_MAIN{define};
+  foreach my $define (@{$OPT_MAIN{define}}) {
+    # add this color option:
+    if ($define =~ /^\s*(\w+)\s+(\S+)\s*$/){
+      $OPT_DEFINE{$1} = $2;
+      print "   found define: $1 --> $2\n";
+    }
+  }
+} # define options
 
 if ($OPT_MAIN{target_dir}) {
   $OPT_MAIN{slide_dir} = $OPT_MAIN{target_dir};
@@ -566,6 +584,9 @@ else {
   $OPT{txt_contents} = $OPT{contents_header};
   $OPT{txt_index} = $OPT{index_header};
 }
+
+# merge define options:
+@OPT{ keys %OPT_DEFINE } = values %OPT_DEFINE;
 
 if ($OPT{tree_applet}){              #--------------------- TreeApplet
   # now update tree applet files in target directory
@@ -2224,6 +2245,9 @@ sub handleTag { #-----------------------------------------------
       if ( defined $_[3]->{'border'}) {
         $border="BORDER=\"$_[3]->{'border'}\"";
       }
+      if ( defined $_[3]->{'class'}) {
+        $border="class=\"$_[3]->{'class'}\"";
+      }
       if ( defined $_[3]->{'bgcolor'}) {
         $table_bgcolor=" BGCOLOR=\"$_[3]->{'bgcolor'}\"";
       }
@@ -2568,10 +2592,7 @@ EOT
 <TITLE>$PAGES[$page_no]->{HD}</TITLE>
 EOT
 
-  if ($OPT{style_sheet}) {      # patched: JSTENZEL, 1.01-12-WS2004, 1.01-23-WS2005
-    print $f <<EOT;
-<LINK REL="stylesheet" TYPE="text/css" HREF="$OPT{style_sheet}">
-
+    my $xyz = <<"EOT";
 <LINK REL="SHORTCUT ICON" TYPE="image/ico" HREF="favicon.ico">
 
 <style type="text/css" media="all">
@@ -2593,6 +2614,11 @@ EOT
   .slack { border: 3px double #bbbbbb;}
   .vrule { position: absolute; right: 0px; top: 1px; }
 </style>
+
+EOT
+  if ($OPT{style_sheet}) {      # patched: JSTENZEL, 1.01-12-WS2004, 1.01-23-WS2005
+    print $f <<EOT;
+<LINK REL="stylesheet" TYPE="text/css" HREF="$OPT{style_sheet}">
 
 EOT
   }
@@ -2992,8 +3018,8 @@ B<pp2html> - PerlPoint to HTML converter
 
 =head1 VERSION
 
-This man page describes $Revision: 1.21 $
-from PerlPoint::Converters Package 1.0204
+This man page describes $Revision: 1.22 $
+from PerlPoint::Converters Package 1.0205
 
 =head1 SYNOPSIS
 
@@ -3185,7 +3211,7 @@ This means that Verbatim Blocks are suitable for code examples:
 Just cut and paste your piece of code into the C<pp2html> input file
 and put the verbatim box markers around:
 
-  << END_OF_BOX
+  <<END_OF_BOX
   sub verbatim_text
   {
     for example some piece of code;
@@ -3194,7 +3220,7 @@ and put the verbatim box markers around:
 
 The block begins with `E<lt>E<lt>MARK' and ends with the text
 C<MARK> on a separate line. This is like a C<here document> in perl
-or in a C-shell.
+or in a C-shell. Note: There must not be white space between E<lt>E<lt> and MARK.
 
 Alternatively you can use the \INCLUDE tag with the example option:
 
@@ -3557,6 +3583,16 @@ beginning, there's no multiline support built in yet.)
 
 These texts will be used to replace the corresponding keywords in template files which are used in
 the slides. See for example the orange_slides style.
+
+There is another option which allows to define your own keywords which will be replaced with
+values from an option:
+
+=item --define name=value
+
+This option is a multiple option (may be specified more than once). For example: Specifiy C<--define main_bg_color=#CCCCEE> C<--define main_fg_color=#0000CC> in your options file. 
+Then you can use "MAIN_BG_COLOR" and "MAIN_FG_COLOR" in your own template files and these texts are 
+replaced with the values specified in the option file. This can be useful for easily switching colors
+in your self defined style by changing the C<--define> options in the options file.
 
 =item --boxtext_bold=ON
 
@@ -4020,4 +4056,4 @@ Initial revision
 
 # TODO: Escapes in headers do not work correctly
 
-# vim:foldmethod=marker:foldcolumn=4:ft=perl
+# vim:fileformat=unix:foldmethod=marker:foldcolumn=4:ft=perl

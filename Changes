@@ -6,6 +6,44 @@
 // See also: ./doc/Changes.htm
 // ///////////////////////////
 
+=Version 1.0.205 07/02/2006
+
+* New option for pp2latex: --section-sequence
+
+* New option for pp2html: --tpl_define
+  This allows to use user defined names in template files. The effect ist that tpl_define names
+  in template files are automatically replaced with the value from the corresponding option:
+
+  Example:
+     --tpl_define "bg_main_wd #FFCCBB"
+
+     This will replace BG_MAIN_WD with #FFCCBB in all template
+     files from a style.
+
+* Now it is possible to specify a class name for tables. This is useful when you want to use a css style sheet:
+
+Style Sheet:
+
+  .mytable {
+     margin-left:1mm;
+     background-color:#e0eeee;
+     padding-left:5px;
+     padding-right:5px;
+     width:15cm;
+  }
+
+Perlpoint:
+
+<<VERBATIM
+  \TABLE{class="mytable" separator="|"}
+  \B<Head1> | \B<Head2>
+   text1    | text 2
+   text1.1  | text 2.1
+  \END_TABLE
+VERBATIM
+    
+
+
 =Version 1.0204  25/02/2005
 
 * better docu (less is more)

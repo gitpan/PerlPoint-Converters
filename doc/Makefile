@@ -1,7 +1,7 @@
 # Makefile for Documentation
 # //////////////////////////
 
-PERL=perl
+PERL=/usr/bin/perl
 
 
 PPDOC = ./PPDOC

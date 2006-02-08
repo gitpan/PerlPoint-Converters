@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         PerlPoint-Converters
-version:      1.0204
+version:      1.0205
 version_from: lib/PerlPoint/Converters.pm
 installdirs:  site
 requires:

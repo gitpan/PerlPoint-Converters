@@ -42,7 +42,7 @@ use PerlPoint::Converters qw(replace_keywords copy_file update_file return_abs_p
 
 my $me = basename($0);
 
-my $VERSION = sprintf("%d.%02d", q/$Revision: 1.14 $/ =~ /(\d+)\.(\d+)/);
+my $VERSION = sprintf("%d.%02d", q/$Revision: 1.16 $/ =~ /(\d+)\.(\d+)/);
 my $PACK_VERSION = $PerlPoint::Converters::VERSION;
 $main::VERSION = $VERSION;
 
@@ -121,6 +121,7 @@ die unless GetOptions( \%OPT, #{{{1
   "quiet",
   "safeOpcode=s@",
   "set=s@",
+  "section-sequence=s@",
   "slide_dir=s",
   "trace:i",
   "prolog=s",
@@ -141,6 +142,16 @@ print STDERR "$Date: 2001/12/19 21:04:43 $nix\n" unless $OPT{quiet};
 print STDERR "(c) Lorenz Domke <lorenz.domke\@gmx.de> 2001.\n\n" unless $OPT{nocopyright};
 exit if $OPT{version};
 
+# handle section sequence:
+if (!exists $OPT{"section-sequence"}){
+     ${ $OPT{"section-sequence"}}[0] = "chapter";
+     ${ $OPT{"section-sequence"}}[1] = "section";
+     ${ $OPT{"section-sequence"}}[2] = "subsection";
+     ${ $OPT{"section-sequence"}}[3] = "subsubsection";
+     ${ $OPT{"section-sequence"}}[4] = "paragraph";
+     ${ $OPT{"section-sequence"}}[5] = "subparagraph";
+     ${ $OPT{"section-sequence"}}[6] = "textbf";
+}
 
 $verbose = 0 if ($OPT{quiet} or $OPT{noinfo});
 
@@ -351,9 +362,9 @@ sub begin_doc{ #{{{1---------------------------------------------
   } else {
 
   print <<'EOT';
-\documentclass [11pt] {article}   % 
+\documentclass [11pt] {report}   % 
 \usepackage{german}               % ISO-Latin-Zeichensatz (äöüß)
-\usepackage{isolatin1}            % ISO-Latin-Zeichensatz (äöüß)
+%\usepackage{isolatin1}            % ISO-Latin-Zeichensatz (äöüß)
 \parindent0pt                     % no indentation of first line
 \parskip1ex                       % white space between chapters
 \pagestyle{headings}     %
@@ -428,22 +439,13 @@ sub handleHeadline { #{{{1---------------------------------------
    #print "==>@BUFFER<==\n";
     start_new_page($_[2], @BUFFER);
     my $section;
-    $_[2]--; # in case of report ... TODO: option which tells type of document
-    if      ($_[2] == 0){
-      $section = 'chapter';
-    } elsif ($_[2] == 1){
-      $section = 'section';
-    } elsif ($_[2] == 2){
-      $section = 'subsection';
-    } elsif ($_[2] == 3){
-      $section = 'subsubsection';
-    } elsif ($_[2] == 4){
-      $section = 'paragraph';
-    } elsif ($_[2] == 5){
-      $section = 'subparagraph';
+    my $max = scalar @{ $OPT{"section-sequence"}};
+    if ($_[2] >= $max) {
+      $section = ${ $OPT{"section-sequence"}}[$max - 1];
     } else {
-      $section = '\\textbf';
+      $section = ${ $OPT{"section-sequence"}}[$_[2]-1];
     }
+
     push_page $page_ref, "\n\n\\$section\{";
     flush;
     push_page $page_ref, "}\n";
@@ -1045,7 +1047,7 @@ B<pp2latex> - PerlPoint to LaTeX converter
 =head1 VERSION
 
 This man page describes $Revision: 1.14 $
-from PerlPoint::Converters Package 1.0204
+from PerlPoint::Converters Package 1.0205
 
 
 =head1 SYNOPSIS
@@ -1068,6 +1070,27 @@ There you will find everything you ever wanted to know about PerlPoint ;-)
 =head1 OPTIONS
 
 =over 4
+
+
+=item --section-sequence=chapter
+
+This option may (and should) be specified more than once. For each level of headline a
+corresponding LaTeX section can be specified: The following sequence of options yields
+the assignment shown below:
+
+ --section-sequence=section
+ --section-sequence=subsection
+ --section-sequence=subsubsection
+ --section-sequence=paragraph
+ --section-sequence=bftext
+
+ =Healine Level 0             --->  \section{Headline Level 0}
+ ==Healine Level 1            --->  \subsection{Headline Level 1}
+ ===Healine Level 2           --->  \subsubsection{Headline Level 2}
+ ====Healine Level 3          --->  \paragraph{Headline Level 3}
+ =====Healine Level 4, 5, ... --->  \textbf{Headline Level 4, 5, ...}
+
+B<Note:> --section-sequence=chapter can only be use if the document class is report or book.
 
 =item --filter=regexp
 
